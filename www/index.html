@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SlimePop">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="x-apple-disable-message-bar" content="true">
+    <title>史萊姆進化大爆發 Slime Merge Pop!</title>
+    <style>
+        :root {
+            --safe-top: env(safe-area-inset-top);
+            --safe-bottom: env(safe-area-inset-bottom);
+            --safe-left: env(safe-area-inset-left);
+            --safe-right: env(safe-area-inset-right);
+        }
+
+        * {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: #1a1a2e;
+            color: #fff;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            height: 100%;
+            width: 100%;
+            touch-action: none;
+            -webkit-overflow-scrolling: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: calc(20px + var(--safe-top));
+            padding-bottom: var(--safe-bottom);
+            padding-left: var(--safe-left);
+            padding-right: var(--safe-right);
+        }
+
+        #ui {
+            font-size: clamp(16px, 4vw, 24px);
+            font-weight: bold;
+            margin-bottom: max(8px, calc(env(safe-area-inset-top) * 0.3));
+            text-shadow: 0 0 10px #ff007f;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        #gameCanvas {
+            background: #16213e;
+            border: 4px solid #0f3460;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            max-width: -webkit-fill-available;
+            max-width: fill-available;
+            height: auto;
+            aspect-ratio: 400 / 600;
+            max-height: 70vh;
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+        }
+
+        #msg {
+            margin-top: max(10px, env(safe-area-inset-bottom) / 4);
+            font-size: clamp(12px, 3vw, 16px);
+            color: #e94560;
+            text-align: center;
+            padding: 0 max(16px, env(safe-area-inset-left));
+        }
+
+        /* Fullscreen adjustment when in immersive mode */
+        body.fullscreen #ui {
+            margin-top: max(10px, env(safe-area-inset-top));
+        }
+
+        body.fullscreen #gameCanvas {
+            max-height: 75vh;
+        }
+    </style>
+    <!-- 引入物理引擎 Matter.js（本地副本，確保離線可用） -->
+    <script src="matter.min.js"></script>
+</head>
+<body>
+
+    <div id="ui">得分: <span id="score">0</span></div>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <div id="msg">💡 點擊或拖曳畫面釋放史萊姆！相同顏色的會進化！</div>
+
+    <script>
+        const { Engine, Render, Runner, Bodies, Composite, Body, Events } = Matter;
+
+        // 初始化物理引擎
+        const engine = Engine.create();
+        const world = engine.world;
+
+        const canvas = document.getElementById('gameCanvas');
+        const scoreEl = document.getElementById('score');
+        let score = 0;
+
+        // 設置渲染器（保險起見保留 canvas 固定尺寸）
+        const render = Render.create({
+            canvas: canvas,
+            engine: engine,
+            options: {
+                width: 400,
+                height: 600,
+                wireframes: false,
+                background: '#16213e'
+            }
+        });
+
+        Render.run(render);
+        const runner = Runner.create();
+        Runner.run(runner, engine);
+
+        // 建立遊戲邊界 (牆壁)
+        const ground = Bodies.rectangle(200, 590, 400, 20, { isStatic: true, render: { fillStyle: '#0f3460' } });
+        const leftWall = Bodies.rectangle(10, 300, 20, 600, { isStatic: true, render: { fillStyle: '#0f3460' } });
+        const rightWall = Bodies.rectangle(390, 300, 20, 600, { isStatic: true, render: { fillStyle: '#0f3460' } });
+        Composite.add(world, [ground, leftWall, rightWall]);
+
+        // 史萊姆等級設定 (半徑, 顏色, 分數)
+        const slimeTypes = [
+            { radius: 15, color: '#00f5d4', score: 2 },  // LV1
+            { radius: 25, color: '#00bbf9', score: 4 },  // LV2
+            { radius: 35, color: '#f15bb5', score: 8 },  // LV3
+            { radius: 45, color: '#fee440', score: 16 }, // LV4
+            { radius: 55, color: '#9b5de5', score: 32 }, // LV5
+            { radius: 70, color: '#ff006e', score: 64 }  // LV6 (大魔王)
+        ];
+
+        let currentX = 200;
+
+        // 監聽點擊/輕觸事件投放史萊姆
+        function getEventX(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : (e.changedTouches ? e.changedTouches[0].clientX : e.clientX);
+            const x = (clientX - rect.left) * (400 / rect.width);
+            if (x < 30) return 30;
+            if (x > 370) return 370;
+            return x;
+        }
+
+        function dropSlime(x) {
+            // 隨機投放 LV1 - LV3 史萊姆
+            const lv = Math.floor(Math.random() * 3);
+            const type = slimeTypes[lv];
+
+            const slime = Bodies.circle(x, 50, type.radius, {
+                restitution: 0.3, // 彈性
+                friction: 0.1,
+                label: 'slime_' + lv,
+                render: { fillStyle: type.color }
+            });
+
+            Composite.add(world, slime);
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            dropSlime(getEventX(e));
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            dropSlime(getEventX(e));
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+
+        // 核心碰撞邏輯：相同史萊姆合成進化
+        Events.on(engine, 'collisionStart', function(event) {
+            const pairs = event.pairs;
+
+            pairs.forEach(pair => {
+                const labelA = pair.bodyA.label;
+                const labelB = pair.bodyB.label;
+
+                // 檢查是否同種類史萊姆相撞
+                if (labelA && labelB && labelA === labelB && labelA.startsWith('slime_')) {
+                    const currentLv = parseInt(labelA.split('_')[1]);
+
+                    // 未達最高等級，可以進化
+                    if (currentLv < slimeTypes.length - 1) {
+                        const nextLv = currentLv + 1;
+                        const nextType = slimeTypes[nextLv];
+
+                        // 計算合成中心點
+                        const posX = (pair.bodyA.position.x + pair.bodyB.position.x) / 2;
+                        const posY = (pair.bodyA.position.y + pair.bodyB.position.y) / 2;
+
+                        // 移除舊史萊姆
+                        Composite.remove(world, pair.bodyA);
+                        Composite.remove(world, pair.bodyB);
+
+                        // 產生新進化史萊姆
+                        const newSlime = Bodies.circle(posX, posY, nextType.radius, {
+                            restitution: 0.4,
+                            label: 'slime_' + nextLv,
+                            render: { fillStyle: nextType.color }
+                        });
+
+                        Composite.add(world, newSlime);
+
+                        // 加分
+                        score += nextType.score;
+                        scoreEl.innerText = score;
+                    }
+                }
+            });
+        });
+
+        // iOS 安全區域狀態列處理（iOS 16.4+ 偏好 not-immersive）
+        // 嘗試進入極致沉浸模式把狀態列吃掉
+        if (window.StatusBar && typeof window.StatusBar.hide === 'function') {
+            setTimeout(() => {
+                try { window.StatusBar.hide(); } catch (e) { /* ignore */ }
+            }, 100);
+        }
+    </script>
+</body>
+</html>

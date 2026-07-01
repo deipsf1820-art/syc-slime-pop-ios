@@ -1,0 +1,27 @@
+{
+  "appId": "com.syc.slimepop",
+  "appName": "SlimePop",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#1a1a2e",
+    "scrollEnabled": false,
+    "allowsLinkPreview": false,
+    "allowsInlineMediaPlayback": true,
+    "preferredContentMode": "mobile"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "launchAutoHide": true,
+      "backgroundColor": "#1a1a2e",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "LIGHT",
+      "backgroundColor": "#1a1a2e"
+    }
+  }
+}

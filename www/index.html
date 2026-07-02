@@ -121,6 +121,42 @@
             touch-action: none;
         }
 
+        #msg {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 12px;
+            text-align: center;
+            font-size: 13px;
+            line-height: 1.35;
+            color: rgba(255, 255, 255, 0.9);
+            pointer-events: none;
+            z-index: 20;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.7);
+        }
+
+        #floater {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 40px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: 900;
+            color: #fff;
+            pointer-events: none;
+            z-index: 20;
+            text-shadow: 0 0 20px currentColor;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.18s ease, transform 0.18s ease;
+        }
+
+        #floater.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
         #bottomBar {
             width: 100%;
             max-width: 400px;
@@ -156,18 +192,6 @@
             height: 28px;
             border-radius: 50%;
             box-shadow: 0 0 16px currentColor;
-        }
-
-        #msg {
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-            font-size: 13px;
-            line-height: 1.35;
-            color: rgba(255, 255, 255, 0.85);
-            padding: 4px 2px;
-            min-height: 18px;
-            flex-shrink: 0;
         }
 
         #startOverlay {
@@ -315,6 +339,8 @@
         <div id="canvasWrap">
             <canvas id="gameCanvas" width="400" height="600"></canvas>
             <div id="touchLayer"></div>
+            <div id="floater"></div>
+            <div id="msg">點擊畫面投放史萊姆。</div>
         </div>
 
         <div id="bottomBar">
@@ -326,8 +352,6 @@
                 <div class="pill-label">重新開始</div>
             </div>
         </div>
-
-        <div id="msg">點擊畫面投放史萊姆。</div>
     </div>
 
     <div id="startOverlay">
@@ -345,10 +369,10 @@
             <ul>
                 <li>點擊或輕觸畫布投放史萊姆。</li>
                 <li>相同等級與顏色碰撞會進化成更高等級。</li>
-                <li>每次進化都可賺取積分，等級愈高分數愈高。</li>
+                <li>連續合併會累積 Combo，倍率最高 x8。</li>
+                <li>Combo 滿條會觸發 bomb效果，炸掉周圍小史萊姆。</li>
                 <li>盡量避免堆到頂部紅線，超過紅線即 Game Over。</li>
-                <li>下一隻史萊姆會預覽，左上角最高分會記住。</li>
-                <li>隨時可按「重新開始」重置遊戲。</li>
+                <li>重疊越密紅色越亮，combo 越高越刺激。</li>
             </ul>
             <button class="closeBtn" id="closeRules">關閉</button>
         </div>
@@ -358,14 +382,11 @@
         window.onerror = function(msg, url, line) {
             var el = document.getElementById('msg');
             if (el) el.innerText = '錯誤：' + msg + ' (行 ' + line + ')';
-            console.error('ERROR', msg, url, line);
             return true;
         };
-
         window.addEventListener('unhandledrejection', function(e) {
             var el = document.getElementById('msg');
             if (el) el.innerText = '未處理錯誤：' + (e.reason && e.reason.message ? e.reason.message : String(e.reason));
-            console.error('UNHANDLED', e.reason);
         });
 
         try {
@@ -382,11 +403,12 @@
 
                 var canvas = document.getElementById('gameCanvas');
                 var touchLayer = document.getElementById('touchLayer');
+                var msgEl = document.getElementById('msg');
+                var floaterEl = document.getElementById('floater');
                 var scoreEl = document.getElementById('score');
                 var bestEl = document.getElementById('best');
                 var nextDot = document.getElementById('nextDot');
                 var ruleDot = document.getElementById('ruleDot');
-                var msgEl = document.getElementById('msg');
 
                 var engine = Engine.create();
                 var world = engine.world;
@@ -404,7 +426,6 @@
                     }
                 });
                 Render.run(render);
-
                 var runner = Runner.create();
                 Runner.run(runner, engine);
 
@@ -439,6 +460,9 @@
                 var gameOver = false;
                 var nextLv = 0;
                 var lockDrop = false;
+                var combo = 0;
+                var lastMergeAt = 0;
+                var comboMultiplier = 1;
 
                 function pickNext() {
                     var lv = Math.floor(Math.random() * 3);
@@ -448,6 +472,57 @@
                     ruleDot.style.backgroundColor = t.color;
                     ruleDot.style.color = t.color;
                     return lv;
+                }
+
+                function showFloater(text, color) {
+                    floaterEl.innerText = text;
+                    floaterEl.style.color = color || '#fff';
+                    floaterEl.classList.add('show');
+                    setTimeout(function() { floaterEl.classList.remove('show'); }, 700);
+                }
+
+                function updateDangerLine() {
+                    var height = canvas.height;
+                    var limitY = 72;
+                    var allBodies = Composite.allBodies(world);
+                    var topY = height;
+                    for (var i = 0; i < allBodies.length; i++) {
+                        var b = allBodies[i];
+                        if (b.isStatic) continue;
+                        var cy = b.position.y - (b.circleRadius ? b.circleRadius : 10);
+                        if (cy < topY) topY = cy;
+                    }
+                    var ratio = Math.max(0, Math.min(1, (topY - limitY) / (height - limitY)));
+                    var r = Math.round(233 + (255 - 233) * ratio);
+                    var g = Math.round(69 + (120 - 69) * ratio);
+                    var b2 = Math.round(96 + (90 - 96) * ratio);
+                    dangerLine.render.fillStyle = 'rgb(' + r + ',' + g + ',' + b2 + ')';
+                    return topY;
+                }
+
+                function triggerBomb(x, y) {
+                    var blast = 140;
+                    var toRemove = [];
+                    var allBodies = Composite.allBodies(world);
+                    for (var i = 0; i < allBodies.length; i++) {
+                        var b = allBodies[i];
+                        if (b.isStatic) continue;
+                        var dx = b.position.x - x;
+                        var dy = b.position.y - y;
+                        var dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < blast) {
+                            toRemove.push(b);
+                            var push = (blast - dist) / blast;
+                            Composite.applyForce(b, b.position, {
+                                x: (dx / dist) * push * 0.08,
+                                y: (dy / dist) * push * 0.08 - 0.04
+                            });
+                        }
+                    }
+                    for (var j = 0; j < toRemove.length; j++) {
+                        Composite.remove(world, toRemove[j]);
+                    }
+                    return toRemove.length;
                 }
 
                 function dropAt(x) {
@@ -483,6 +558,8 @@
                     }
                     score = 0;
                     scoreEl.innerText = '0';
+                    combo = 0;
+                    comboMultiplier = 1;
                     gameOver = false;
                     nextLv = pickNext();
                     msgEl.innerText = '點擊畫面投放史萊姆。';
@@ -526,6 +603,29 @@
                         if (merged[pair.bodyA.id] || merged[pair.bodyB.id]) continue;
                         if (labelA !== labelB) continue;
 
+                        var now = Date.now();
+                        if (now - lastMergeAt < 1800) {
+                            combo++;
+                        } else {
+                            combo = 1;
+                        }
+                        lastMergeAt = now;
+
+                        if (combo >= 5) {
+                            var cx = (pair.bodyA.position.x + pair.bodyB.position.x) / 2;
+                            var cy = (pair.bodyA.position.y + pair.bodyB.position.y) / 2;
+                            var n = triggerBomb(cx, cy);
+                            showFloater('BOMB x' + n, '#ff6b81');
+                            combo = 0;
+                            comboMultiplier = 1;
+                        } else {
+                            comboMultiplier = Math.min(8, 1 + combo * 0.5);
+                            var lv = parseInt(labelA.split('_')[1], 10);
+                            if (lv < slimeTypes.length - 1) {
+                                showFloater('COMBO x' + combo + '  x' + comboMultiplier.toFixed(1), '#ffd166');
+                            }
+                        }
+
                         var currentLv = parseInt(labelA.split('_')[1], 10);
                         if (currentLv >= slimeTypes.length - 1) continue;
 
@@ -551,21 +651,20 @@
                         });
                         Composite.add(world, newSlime);
 
-                        score += nextType.score;
+                        score += Math.round(nextType.score * comboMultiplier);
                         scoreEl.innerText = score;
                     }
                 });
 
-                var GROW_MS = 1800;
-
-                Events.on(engine, 'afterUpdate', function() {
+                Events.on(engine, 'afterUpdate', function(e) {
                     if (gameOver) return;
+                    var topY = updateDangerLine();
                     var allBodies = Composite.allBodies(world);
                     for (var i = 0; i < allBodies.length; i++) {
                         var body = allBodies[i];
                         if (body.isStatic) continue;
                         var age = Date.now() - (body.plugin && body.plugin.createdAt ? body.plugin.createdAt : 0);
-                        if (body.position.y < 60 && Math.abs(body.velocity.y) < 0.8 && age > GROW_MS) {
+                        if (body.position.y < 60 && Math.abs(body.velocity.y) < 0.8 && age > 1800) {
                             gameOver = true;
                             msgEl.innerText = '遊戲結束！最終得分：' + score;
                             if (score > best) {

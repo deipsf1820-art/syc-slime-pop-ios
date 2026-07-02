@@ -127,9 +127,14 @@ try{
 (function(){
 var M=window.Matter,Engine=M.Engine,Render=M.Render,Runner=M.Runner,Bodies=M.Bodies,Composite=M.Composite,Events=M.Events,Body=M.Body;
 var canvas=document.getElementById('gameCanvas'),fwCanvas=document.getElementById('fwCanvas'),fwCtx=fwCanvas.getContext('2d'),touch=document.getElementById('touchLayer'),msgEl=document.getElementById('gameMsg'),scoreEl=document.getElementById('score'),bestEl=document.getElementById('best'),nextDot=document.getElementById('nextDot'),comboBadge=document.getElementById('comboBadge'),cbTitle=document.getElementById('cbTitle'),cbMain=document.getElementById('cbMain'),cbSub=document.getElementById('cbSub'),scorePop=document.getElementById('scorePop');
-var engine=Engine.create(),world=engine.world;engine.gravity.y=1.2;
-var render=Render.create({canvas:canvas,engine:engine,options:{width:400,height:600,wireframes:false,background:'transparent',pixelRatio:Math.min(window.devicePixelRatio||1,2)}});
-Render.run(render);var runner=Runner.create();Runner.run(runner,engine);
+var engine,world;
+try{
+    var ctx=canvas.getContext('2d');
+    if(!ctx){msgEl.innerText='錯誤：瀏覽器唔支持 2D 繪圖';throw new Error('no 2d ctx');}
+    engine=Engine.create();world=engine.world;engine.gravity.y=1.2;
+    var render=Render.create({canvas:canvas,engine:engine,options:{width:400,height:600,wireframes:false,background:'transparent',pixelRatio:Math.min(window.devicePixelRatio||1,2)}});
+    Render.run(render);var runner=Runner.create();Runner.run(runner,engine);
+}catch(e){document.getElementById('gameMsg').innerText='啟動失敗：'+e.message;console.error(e)}
 var wall={isStatic:true,render:{fillStyle:'#0f3460'}};
 Composite.add(world,[Bodies.rectangle(200,610,420,24,wall),Bodies.rectangle(-10,300,24,600,wall),Bodies.rectangle(410,300,24,600,wall)]);
 var danger=Bodies.rectangle(200,72,400,4,{isStatic:true,isSensor:true,render:{visible:true,fillStyle:'#e94560'}});

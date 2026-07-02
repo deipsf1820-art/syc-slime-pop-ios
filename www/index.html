@@ -247,7 +247,14 @@ Events.on(engine,'collisionStart',function(ev){
             var n=bombNear(cx2,cy2);
             showCombo('BOMB','x'+n,'激烈！',true);flash('+'+(100+n*20),'#ff6b81');score+=100+n*20;combo=0;cm=1;continue;
         }
-        cm=Math.min(8,1+combo*0.5);if(lv>=types.length-1)continue;
+        cm=Math.min(8,1+combo*0.5);
+        if(lv>=types.length-1){
+            var cx3=(p.bodyA.position.x+p.bodyB.position.x)/2, cy3=(p.bodyA.position.y+p.bodyB.position.y)/2;
+            spawnFirework(cx3,cy3,'#ffd166', 48);
+            showCombo('MAX','POP!','太強了！',false);
+            flash('+'+Math.round(types[lv].s*cm*3),'#ffd166'); score+=Math.round(types[lv].s*cm*3); scoreEl.innerText=score;
+            Composite.remove(world,[p.bodyA,p.bodyB]); merged[p.bodyA.id]=true; merged[p.bodyB.id]=true; continue;
+        }
         showCombo('COMBO x'+combo,'x'+cm.toFixed(1),subs[Math.min(combo-1,subs.length-1)],false);
         var nx=types[lv+1],px=(p.bodyA.position.x+p.bodyB.position.x)/2,py=(p.bodyA.position.y+p.bodyB.position.y)/2;
         spawnFirework(px,py,nx.c);

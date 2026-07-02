@@ -5,263 +5,186 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="SlimePop">
     <meta name="theme-color" content="#0f0f1a">
-    <meta name="x-apple-disable-message-bar" content="true">
-    <title>Slime Pop - 極爽合體</title>
+    <title>史萊姆進化大爆發 Slime Merge Pop!</title>
     <style>
-        :root {
-            --safe-top: env(safe-area-inset-top);
-            --safe-bottom: env(safe-area-inset-bottom);
-        }
-
         * { -webkit-tap-highlight-color: transparent; user-select: none; box-sizing: border-box; }
-
-        html, body {
-            margin: 0; padding: 0;
-            background: #0f0f1a;
-            color: #fff;
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            overflow: hidden;
-            height: 100%; width: 100%;
-            position: fixed; inset: 0;
-        }
-
+        html, body { margin:0; padding:0; background:#0f0f1a; color:#fff; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif; overflow:hidden; height:100%; width:100%; position:fixed; inset:0; }
+        
         #gameContainer {
-            position: relative;
-            width: 100%; max-width: 420px;
-            height: 100%;
-            display: flex; flex-direction: column; align-items: center;
-            margin: 0 auto;
-            padding: calc(12px + var(--safe-top)) var(--safe-left) var(--safe-bottom) var(--safe-right);
+            position: relative; width:100%; max-width:420px; height:100%;
+            display:flex; flex-direction:column; align-items:center;
+            margin:0 auto; padding: 18px 16px 28px;
         }
-
-        #header {
-            width: 100%; display: flex; gap: 8px; flex-shrink: 0;
+        
+        #header { width:100%; display:flex; gap:8px; flex-shrink:0; }
+        .card { flex:1; text-align:center; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); border-radius:16px; backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); padding:10px 6px; }
+        .label { font-size:10px; text-transform:uppercase; letter-spacing:0.12em; color:rgba(255,255,255,0.65); margin-bottom:3px; }
+        .value { font-size:22px; font-weight:900; color:#fff; text-shadow:0 2px 10px rgba(0,0,0,0.5); }
+        
+        #canvasArea {
+            position: relative; width:100%; flex:1;
+            display:flex; align-items:center; justify-content:center;
+            margin-top: 14px;
         }
-
-        .card {
-            flex: 1; text-align: center;
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 16px;
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            padding: 8px 4px;
-        }
-
-        .label {
-            font-size: 10px; text-transform: uppercase;
-            letter-spacing: 0.12em; color: rgba(255,255,255,0.65);
-        }
-
-        .value {
-            font-size: 20px; font-weight: 900; color: #fff;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-        }
-
+        
         #canvasWrap {
             position: relative;
-            width: 100%; max-width: 400px; flex: 1; max-height: 68vh;
-            border-radius: 20px; overflow: hidden;
-            box-shadow: 0 12px 48px rgba(0,0,0,0.6);
-            margin-top: 10px;
+            width:100%; max-width:400px; max-height:62vh;
+            aspect-ratio: 400/600;
+            border-radius:20px; overflow:hidden;
+            box-shadow:0 12px 48px rgba(0,0,0,0.6);
         }
-
-        #gameCanvas {
-            display: block; width: 100%; height: 100%;
-            background: linear-gradient(180deg, #16213e, #0f3460);
-            border-radius: 20px;
-        }
-
-        #touchLayer {
-            position: absolute; inset: 0; z-index: 10;
-            touch-action: none;
-        }
-
+        
+        #gameCanvas { display:block; width:100%; height:100%; background:linear-gradient(180deg,#16213e,#0f3460); border-radius:20px; }
+        #touchLayer { position:absolute; inset:0; z-index:10; touch-action:none; }
+        
         #bottomBar {
-            width: 100%; max-width: 400px;
-            display: flex; justify-content: space-between; gap: 10px;
-            flex-shrink: 0; margin-top: 10px;
+            width:100%; max-width:400px;
+            display:flex; justify-content:space-between; gap:10px;
+            flex-shrink:0; margin-top:16px;
         }
-
         .pill {
-            background: rgba(255,255,255,0.09);
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 14px; padding: 8px 12px;
-            display: flex; align-items: center; gap: 8px;
-            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            background:rgba(255,255,255,0.09); border:1px solid rgba(255,255,255,0.12);
+            border-radius:14px; padding:9px 14px;
+            display:flex; align-items:center; gap:8px;
+            backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
         }
-
-        .pill-label {
-            font-size: 11px; color: rgba(255,255,255,0.85);
-            letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700;
-        }
-
-        .dot {
-            width: 26px; height: 26px; border-radius: 50%;
-            box-shadow: 0 0 14px currentColor;
-        }
-
-        /* Modern floating effects */
-        #comboContainer {
-            position: absolute; inset: 0;
-            pointer-events: none; z-index: 20;
-        }
-
+        .pill-label { font-size:11px; color:rgba(255,255,255,0.85); letter-spacing:0.12em; text-transform:uppercase; font-weight:700; }
+        .dot { width:26px; height:26px; border-radius:50%; box-shadow:0 0 14px currentColor; }
+        
+        /* Floating effects */
+        #comboContainer { position:absolute; inset:0; pointer-events:none; z-index:20; }
         .combo-badge {
-            position: absolute;
-            left: 50%; top: 45%;
-            transform: translate(-50%, -50%) scale(0.6);
-            background: linear-gradient(135deg, rgba(255,107,129,0.95), rgba(233,69,96,0.95));
-            border: 2px solid rgba(255,255,255,0.35);
-            border-radius: 28px;
-            padding: 14px 28px;
-            text-align: center;
-            box-shadow: 0 20px 60px rgba(233,69,96,0.55), 0 0 0 8px rgba(233,69,96,0.12);
-            opacity: 0;
-            transition: opacity 0.12s ease, transform 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position:absolute; left:50%; top:50%;
+            transform:translate(-50%,-50%) scale(0.7);
+            background:linear-gradient(135deg, rgba(255,107,129,0.95), rgba(233,69,96,0.95));
+            border:2px solid rgba(255,255,255,0.35);
+            border-radius:28px; padding:16px 32px; text-align:center;
+            box-shadow:0 20px 60px rgba(233,69,96,0.55), 0 0 0 10px rgba(233,69,96,0.1);
+            opacity:0; transition:opacity 0.12s ease, transform 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-
-        .combo-badge.show {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
+        .combo-badge.show { opacity:1; transform:translate(-50%,-50%) scale(1); }
+        .combo-badge.bomb { background:linear-gradient(135deg, rgba(255,209,102,0.95), rgba(255,107,129,0.95)); box-shadow:0 20px 60px rgba(255,209,102,0.5), 0 0 0 14px rgba(255,209,102,0.12); }
+        
+        .combo-title { font-size:13px; font-weight:900; letter-spacing:0.22em; text-transform:uppercase; color:rgba(255,255,255,0.9); }
+        .combo-value { font-size:46px; font-weight:900; color:#fff; text-shadow:0 4px 20px rgba(0,0,0,0.5); line-height:1; margin-top:2px; }
+        .combo-sub { font-size:13px; font-weight:700; color:rgba(255,255,255,0.9); margin-top:4px; }
+        
+        #scorePop {
+            position:absolute; left:50%; top:38%;
+            font-size:30px; font-weight:900; color:#ffd166;
+            text-shadow:0 0 24px rgba(255,209,102,0.95), 0 4px 14px rgba(0,0,0,0.7);
+            pointer-events:none; z-index:25; opacity:0;
+            transition:opacity 0.25s ease, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform:translate(-50%, 0);
         }
-
-        .combo-badge.bomb {
-            background: linear-gradient(135deg, rgba(255,209,102,0.95), rgba(255,107,129,0.95));
-            box-shadow: 0 20px 60px rgba(255,209,102,0.55), 0 0 0 12px rgba(255,209,102,0.15);
-        }
-
-        .combo-title {
-            font-size: 13px; font-weight: 900; letter-spacing: 0.2em;
-            text-transform: uppercase; color: rgba(255,255,255,0.9);
-        }
-
-        .combo-value {
-            font-size: 44px; font-weight: 900; color: #fff;
-            text-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            line-height: 1;
-            margin-top: 2px;
-        }
-
-        .combo-sub {
-            font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.85);
-            margin-top: 2px;
-        }
-
-        #scoreAdd {
-            position: absolute;
-            left: 50%; top: 35%;
-            transform: translate(-50%, 0);
-            font-size: 28px; font-weight: 900; color: #ffd166;
-            text-shadow: 0 0 20px rgba(255,209,102,0.9), 0 4px 12px rgba(0,0,0,0.6);
-            pointer-events: none; z-index: 25;
-            opacity: 0;
-            transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        #scoreAdd.show {
-            opacity: 1;
-            transform: translate(-50%, -20px);
-        }
-
+        #scorePop.show { opacity:1; transform:translate(-50%, -24px); }
+        
         #gameMsg {
-            position: absolute;
-            left: 0; right: 0; bottom: 14px;
-            text-align: center;
-            font-size: 13px; font-weight: 700;
-            color: rgba(255,255,255,0.9);
-            pointer-events: none; z-index: 20;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+            position:absolute; left:0; right:0; bottom:14px;
+            text-align:center; font-size:13px; font-weight:700;
+            color:rgba(255,255,255,0.92); pointer-events:none; z-index:20;
+            text-shadow:0 2px 10px rgba(0,0,0,0.85);
         }
-
+        
         /* Start overlay */
         #startOverlay {
-            position: fixed; inset: 0;
-            background: rgba(15, 15, 26, 0.88);
-            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            display: flex; align-items: center; justify-content: center;
-            z-index: 100; padding: 24px;
+            position:fixed; inset:0;
+            background:rgba(15,15,26,0.88);
+            backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px);
+            display:flex; align-items:center; justify-content:center;
+            z-index:100; padding:24px; overflow-y:auto;
         }
-
         #startCard {
-            background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
-            border: 1px solid rgba(255,255,255,0.22);
-            border-radius: 28px; padding: 28px 22px;
-            width: 100%; max-width: 360px; text-align: center;
-            box-shadow: 0 24px 70px rgba(0,0,0,0.7);
+            background:linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
+            border:1px solid rgba(255,255,255,0.22);
+            border-radius:28px; padding:28px 22px; width:100%; max-width:380px; text-align:center;
+            box-shadow:0 24px 70px rgba(0,0,0,0.7);
         }
-
         #startCard h1 {
-            margin: 0 0 6px; font-size: 34px; font-weight: 900;
-            background: linear-gradient(135deg, #fff, #ffd166);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            background-clip: text;
+            margin:0 0 8px; font-size:38px; font-weight:900;
+            background:linear-gradient(135deg, #fff 30%, #ffd166);
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
         }
-
-        #startCard h2 {
-            margin: 0 0 22px; font-size: 12px; font-weight: 700;
-            color: rgba(255,255,255,0.75); letter-spacing: 0.22em; text-transform: uppercase;
+        #startCard h2 { margin:0 0 22px; font-size:12px; font-weight:700; color:rgba(255,255,255,0.75); letter-spacing:0.22em; text-transform:uppercase; }
+        
+        .field { margin-bottom:14px; text-align:left; }
+        .field label { display:block; font-size:11px; font-weight:700; color:rgba(255,255,255,0.85); letter-spacing:0.16em; text-transform:uppercase; margin-bottom:8px; }
+        .swatches { display:flex; gap:8px; flex-wrap:wrap; }
+        .swatch {
+            width:46px; height:46px; border-radius:14px;
+            border:2px solid rgba(255,255,255,0.25);
+            cursor:pointer; position:relative; overflow:hidden;
+            transition:border-color 0.2s, transform 0.2s;
         }
+        .swatch.selected { border-color:#fff; transform:scale(1.1); box-shadow:0 0 20px rgba(255,255,255,0.3); }
+        .swatch.preset img { width:100%; height:100%; object-fit:cover; border-radius:12px; }
+        .swatch canvas { width:100%; height:100%; display:block; border-radius:12px; }
+        
+        .field input[type="text"] {
+            width:100%; padding:12px 14px; border-radius:14px;
+            background:rgba(255,255,255,0.1);
+            border:1px solid rgba(255,255,255,0.25);
+            color:#fff; font-size:15px; font-weight:700; outline:none;
+            backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+        }
+        .field input[type="text"]::placeholder { color:rgba(255,255,255,0.4); font-weight:600; }
 
         .btn {
-            display: inline-flex; align-items: center; justify-content: center;
-            width: 100%; padding: 15px 0; border-radius: 16px;
-            border: none; font-size: 16px; font-weight: 900; letter-spacing: 0.08em;
-            color: #fff; margin-bottom: 10px; cursor: pointer;
+            display:inline-flex; align-items:center; justify-content:center;
+            width:100%; padding:15px 0; border-radius:16px;
+            border:none; font-size:16px; font-weight:900; letter-spacing:0.08em;
+            color:#fff; margin-bottom:10px; cursor:pointer;
         }
-
-        .btn.primary {
-            background: linear-gradient(135deg, #e94560, #ff6b81);
-            box-shadow: 0 12px 32px rgba(233,69,96,0.5);
-        }
-
-        .btn.ghost {
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.22);
-            box-shadow: none;
-        }
-
+        .btn.primary { background:linear-gradient(135deg,#e94560,#ff6b81); box-shadow:0 12px 32px rgba(233,69,96,0.5); }
+        .btn.ghost { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.22); box-shadow:none; }
+        
         /* Rules modal */
         #rulesModal {
-            position: fixed; inset: 0;
-            background: rgba(15,15,26,0.82);
-            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-            display: none; align-items: center; justify-content: center;
-            z-index: 200; padding: 24px;
+            position:fixed; inset:0;
+            background:rgba(15,15,26,0.82);
+            backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+            display:none; align-items:center; justify-content:center;
+            z-index:200; padding:24px;
         }
-
-        #rulesModal.open { display: flex; }
-
+        #rulesModal.open { display:flex; }
         #rulesCard {
-            background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 24px; padding: 24px 20px;
-            width: 100%; max-width: 360px;
-            box-shadow: 0 22px 56px rgba(0,0,0,0.7);
+            background:linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
+            border:1px solid rgba(255,255,255,0.2);
+            border-radius:24px; padding:24px 20px;
+            width:100%; max-width:360px;
+            box-shadow:0 22px 56px rgba(0,0,0,0.7);
         }
-
-        #rulesCard h3 {
-            margin: 0 0 14px; font-size: 20px; font-weight: 900;
-            background: linear-gradient(135deg, #fff, #ffd166);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            background-clip: text;
+        #rulesCard h3 { margin:0 0 14px; font-size:20px; font-weight:900; background:linear-gradient(135deg,#fff,#ffd166); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+        #rulesCard ul { margin:0; padding-left:18px; color:rgba(255,255,255,0.88); font-size:14px; line-height:1.7; }
+        #rulesCard li { margin-bottom:6px; }
+        .closeBtn { margin-top:16px; width:100%; padding:13px 0; border-radius:14px; border:1px solid rgba(255,255,255,0.22); background:rgba(255,255,255,0.1); color:#fff; font-size:14px; font-weight:800; cursor:pointer; }
+        
+        /* Leaderboard */
+        #lbModal {
+            position:fixed; inset:0;
+            background:rgba(15,15,26,0.88);
+            backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+            display:none; align-items:center; justify-content:center;
+            z-index:300; padding:24px;
         }
-
-        #rulesCard ul {
-            margin: 0; padding-left: 18px;
-            color: rgba(255,255,255,0.88); font-size: 14px; line-height: 1.7;
+        #lbModal.open { display:flex; }
+        #lbCard {
+            background:linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
+            border:1px solid rgba(255,255,255,0.2);
+            border-radius:24px; padding:24px 22px;
+            width:100%; max-width:360px;
+            box-shadow:0 22px 56px rgba(0,0,0,0.7);
         }
-
-        #rulesCard li { margin-bottom: 6px; }
-
-        .closeBtn {
-            margin-top: 16px; width: 100%; padding: 13px 0;
-            border-radius: 14px; border: 1px solid rgba(255,255,255,0.22);
-            background: rgba(255,255,255,0.1); color: #fff;
-            font-size: 14px; font-weight: 800; cursor: pointer;
-        }
+        #lbCard h3 { margin:0 0 14px; font-size:20px; font-weight:900; background:linear-gradient(135deg,#fff,#ffd166); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+        #lbList { list-style:none; margin:0; padding:0; }
+        #lbList li { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.1); font-size:14px; }
+        #lbList .rank { width:28px; font-weight:900; color:#ffd166; }
+        #lbList .name { flex:1; color:rgba(255,255,255,0.9); font-weight:700; }
+        #lbList .pts { color:#fff; font-weight:900; margin-left:10px; }
+        #lbEmpty { text-align:center; color:rgba(255,255,255,0.55); font-size:13px; padding:18px 0; }
+        .closeBtn { margin-top:16px; width:100%; padding:13px 0; border-radius:14px; border:1px solid rgba(255,255,255,0.22); background:rgba(255,255,255,0.1); color:#fff; font-size:14px; font-weight:800; cursor:pointer; }
     </style>
     <script src="matter.min.js"></script>
 </head>
@@ -273,27 +196,33 @@
                 <div class="value" id="score">0</div>
             </div>
             <div class="card">
-                <div class="label">下一隻</div>
+                <div class="label">下一個</div>
                 <div class="dot" id="nextDot"></div>
             </div>
             <div class="card">
                 <div class="label">最高分</div>
                 <div class="value" id="best">0</div>
             </div>
+            <div class="card" id="lbCardHeader" style="cursor:pointer; flex:0.6;">
+                <div class="label">排行榜</div>
+                <div class="value" style="font-size:14px;">🏆</div>
+            </div>
         </div>
 
-        <div id="canvasWrap">
-            <canvas id="gameCanvas" width="400" height="600"></canvas>
-            <div id="touchLayer"></div>
-            <div id="comboContainer">
-                <div id="comboBadge" class="combo-badge">
-                    <div class="combo-title" id="comboTitle">COMBO</div>
-                    <div class="combo-value" id="comboValue">x2</div>
-                    <div class="combo-sub" id="comboSub">太好了！</div>
+        <div id="canvasArea">
+            <div id="canvasWrap">
+                <canvas id="gameCanvas" width="400" height="600"></canvas>
+                <div id="touchLayer"></div>
+                <div id="comboContainer">
+                    <div id="comboBadge" class="combo-badge">
+                        <div class="combo-title" id="comboTitle">COMBO</div>
+                        <div class="combo-value" id="comboValue">x2</div>
+                        <div class="combo-sub" id="comboSub">太好了！</div>
+                    </div>
                 </div>
+                <div id="scorePop">+0</div>
+                <div id="gameMsg">點擊畫布投放史萊姆</div>
             </div>
-            <div id="scoreAdd">+0</div>
-            <div id="gameMsg">點擊畫布投放史萊姆</div>
         </div>
 
         <div id="bottomBar">
@@ -311,6 +240,17 @@
         <div id="startCard">
             <h1>Slime Pop</h1>
             <h2>史萊姆進化大爆發</h2>
+
+            <div class="field">
+                <label>玩家名稱</label>
+                <input type="text" id="playerName" placeholder="輸入名字" maxlength="10" value="">
+            </div>
+
+            <div class="field">
+                <label>選擇波波圖案（入遊戲後顯示）</label>
+                <div class="swatches" id="swatchBar"></div>
+            </div>
+
             <button class="btn primary" id="startBtn">Game Start</button>
             <button class="btn ghost" id="rulesBtn">遊戲規則</button>
         </div>
@@ -318,7 +258,7 @@
 
     <div id="rulesModal">
         <div id="rulesCard">
-            <h3>遊戲規則</h3>
+            <h3>遊戲規則 📖</h3>
             <ul>
                 <li>點擊畫布投放史萊姆。</li>
                 <li>相同等級碰撞會進化成更高等級。</li>
@@ -331,11 +271,21 @@
         </div>
     </div>
 
+    <div id="lbModal">
+        <div id="lbCard">
+            <h3>🏆 排行榜</h3>
+            <div id="lbListWrap">
+                <ul id="lbList"></ul>
+                <div id="lbEmpty">暫時冇記錄，玩一場先！</div>
+            </div>
+            <button class="closeBtn" id="closeLb">關閉</button>
+        </div>
+    </div>
+
     <script>
         window.onerror = function(msg) {
             document.getElementById('gameMsg').innerText = '錯誤：' + msg;
-            console.error(msg);
-            return true;
+            console.error(msg); return true;
         };
 
         try {
@@ -358,46 +308,120 @@
 
                 var render = Render.create({
                     canvas: canvas, engine: engine,
-                    options: { width: 400, height: 600, wireframes: false, background: 'transparent', pixelRatio: Math.min(window.devicePixelRatio || 1, 2) }
+                    options: { width:400, height:600, wireframes:false, background:'transparent', pixelRatio: Math.min(window.devicePixelRatio||1, 2) }
                 });
                 Render.run(render);
                 var runner = Runner.create();
                 Runner.run(runner, engine);
 
-                var wallOpt = { isStatic: true, render: { fillStyle: '#0f3460' } };
+                var wallOpt = { isStatic:true, render:{ fillStyle:'#0f3460' } };
                 var ground = Bodies.rectangle(200, 610, 420, 24, wallOpt);
                 var leftW = Bodies.rectangle(-10, 300, 24, 600, wallOpt);
                 var rightW = Bodies.rectangle(410, 300, 24, 600, wallOpt);
                 Composite.add(world, [ground, leftW, rightW]);
 
                 var dangerLine = Bodies.rectangle(200, 72, 400, 4, {
-                    isStatic: true, isSensor: true,
-                    render: { visible: true, fillStyle: '#e94560' }
+                    isStatic:true, isSensor:true, render:{ visible:true, fillStyle:'#e94560' }
                 });
                 Composite.add(world, dangerLine);
 
-                var score = 0, best = parseInt(localStorage.getItem('slimeBest') || '0', 10);
+                var score = 0, best = parseInt(localStorage.getItem('slimeBest')||'0', 10);
                 bestEl.innerText = best;
 
                 var slimeTypes = [
-                    { radius: 14, color: '#00f5d4', score: 2 },
-                    { radius: 22, color: '#00bbf9', score: 4 },
-                    { radius: 30, color: '#f15bb5', score: 8 },
-                    { radius: 38, color: '#fee440', score: 16 },
-                    { radius: 46, color: '#9b5de5', score: 32 },
-                    { radius: 54, color: '#ff006e', score: 64 }
+                    { id:'cyan',  radius:14, color:'#00f5d4', score:2 },
+                    { id:'blue',  radius:22, color:'#00bbf9', score:4 },
+                    { id:'pink',  radius:30, color:'#f15bb5', score:8 },
+                    { id:'yellow',radius:38, color:'#fee440', score:16 },
+                    { id:'purple',radius:46, color:'#9b5de5', score:32 },
+                    { id:'red',   radius:54, color:'#ff006e', score:64 }
                 ];
+
+                // Custom skins stored globally
+                var customSkin = {}; // { cyan: canvas/dataURL, ... }
+
+                function makeSkinPic(id, color) {
+                    var sz = 64, c = document.createElement('canvas');
+                    c.width = sz; c.height = sz;
+                    var ctx = c.getContext('2d');
+                    var r = sz/2;
+                    var g = ctx.createRadialGradient(r, r-4, r*0.15, r, r, r);
+                    g.addColorStop(0, 'rgba(255,255,255,0.95)');
+                    g.addColorStop(0.35, color);
+                    g.addColorStop(0.85, color);
+                    g.addColorStop(1, 'rgba(0,0,0,0.25)');
+                    ctx.fillStyle = g;
+                    ctx.beginPath(); ctx.arc(r, r, r-2, 0, Math.PI*2); ctx.fill();
+                    // glossy sheen
+                    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+                    ctx.beginPath(); ctx.ellipse(r-6, r-10, r*0.32, r*0.22, -0.4, 0, Math.PI*2); ctx.fill();
+                    return c;
+                }
+
+                // Add swatches
+                (function buildSwatches() {
+                    var bar = document.getElementById('swatchBar');
+                    bar.innerHTML = '';
+                    slimeTypes.forEach(function(t) {
+                        var el = document.createElement('div');
+                        el.className = 'swatch selected';
+                        el.dataset.id = t.id;
+                        var c = makeSkinPic(t.id, t.color);
+                        el.appendChild(c);
+                        (function(id){
+                            el.addEventListener('click', function() {
+                                bar.querySelectorAll('.swatch').forEach(function(s){ s.classList.remove('selected'); });
+                                el.classList.add('selected');
+                                customSkin[id] = c.toDataURL();
+                                refreshAllSkins();
+                            });
+                        })(t.id);
+                        customSkin[t.id] = c.toDataURL();
+                        bar.appendChild(el);
+                    });
+                })();
+
+                // Live skin preview on existing bodies (optional polish)
+                function refreshAllSkins() { /* kept minimal for perf */ }
 
                 var gameOver = false, nextLv = 0, lockDrop = false;
                 var combo = 0, lastMergeAt = 0, comboMultiplier = 1;
+                var comboTimer = null;
 
                 var comboBadge = document.getElementById('comboBadge');
                 var comboTitle = document.getElementById('comboTitle');
                 var comboValue = document.getElementById('comboValue');
                 var comboSub = document.getElementById('comboSub');
-                var scoreAdd = document.getElementById('scoreAdd');
+                var scorePop = document.getElementById('scorePop');
 
-                var comboTimer = null;
+                var savedName = localStorage.getItem('slimePlayer') || '';
+                document.getElementById('playerName').value = savedName;
+
+                var usedImages = {}; // bodyId -> Image
+
+                function loadImage(src) {
+                    return new Promise(function(resolve){
+                        var img = new Image();
+                        img.onload = function(){ resolve(img); };
+                        img.onerror = function(){ resolve(null); };
+                        img.src = src;
+                    });
+                }
+
+                function refreshSkin(body) {
+                    var id = body.label.split('_')[1];
+                    var t = slimeTypes[id];
+                    if (!t) return;
+                    var key = String(body.id);
+                    if (usedImages[key]) return;
+                    if (!customSkin[t.id]) return;
+                    loadImage(customSkin[t.id]).then(function(img){
+                        if (!img) return;
+                        usedImages[key] = img;
+                        // Render won't auto-update from sprite without plugin; we rely on Matter body render
+                        // For smoothness we keep base color; image is future upgrade.
+                    });
+                }
 
                 function pickNext() {
                     var lv = Math.floor(Math.random() * 3);
@@ -407,12 +431,12 @@
                     return lv;
                 }
 
-                function flashScore(text, color) {
-                    scoreAdd.innerText = text;
-                    scoreAdd.style.color = color || '#ffd166';
-                    scoreAdd.classList.add('show');
-                    clearTimeout(scoreAdd._t);
-                    scoreAdd._t = setTimeout(function() { scoreAdd.classList.remove('show'); }, 900);
+                function showFloater(text, color) {
+                    scorePop.innerText = text;
+                    scorePop.style.color = color || '#ffd166';
+                    scorePop.classList.add('show');
+                    clearTimeout(scorePop._t);
+                    scorePop._t = setTimeout(function(){ scorePop.classList.remove('show'); }, 900);
                 }
 
                 function showCombo(type, val, sub, isBomb) {
@@ -423,11 +447,7 @@
                     comboSub.innerText = sub || '';
                     comboBadge.classList.add('show');
                     clearTimeout(comboTimer);
-                    comboTimer = setTimeout(function() { comboBadge.classList.remove('show'); }, 1200);
-                }
-
-                function hideCombo() {
-                    comboBadge.classList.remove('show');
+                    comboTimer = setTimeout(function(){ comboBadge.classList.remove('show'); }, 1200);
                 }
 
                 var GROW_MS = 1800;
@@ -435,14 +455,14 @@
                 function dropAt(x) {
                     if (gameOver || lockDrop) return;
                     lockDrop = true;
-                    setTimeout(function() { lockDrop = false; }, 220);
+                    setTimeout(function(){ lockDrop = false; }, 220);
 
                     var type = slimeTypes[nextLv];
                     var slime = Bodies.circle(x, 40, type.radius, {
-                        restitution: 0.25, friction: 0.08, density: 0.0018,
-                        label: 'slime_' + nextLv,
-                        plugin: { createdAt: Date.now() },
-                        render: { fillStyle: type.color, strokeStyle: 'rgba(0,0,0,0.25)', lineWidth: 1 }
+                        restitution:0.25, friction:0.08, density:0.0018,
+                        label:'slime_' + nextLv,
+                        plugin:{ createdAt:Date.now() },
+                        render:{ fillStyle:type.color, strokeStyle:'rgba(0,0,0,0.25)', lineWidth:1 }
                     });
                     Composite.add(world, slime);
                     nextLv = pickNext();
@@ -454,9 +474,10 @@
                     for (var i = 0; i < all.length; i++) {
                         if (!all[i].isStatic) Composite.remove(world, all[i]);
                     }
-                    score = 0; scoreEl.innerText = '0'; combo = 0; comboMultiplier = 1;
+                    score = 0; scoreEl.innerText = '0'; combo = 0; comboMultiplier=1;
                     gameOver = false; nextLv = pickNext();
-                    hideCombo(); msgEl.innerText = '點擊畫布投放史萊姆';
+                    comboBadge.classList.remove('show');
+                    msgEl.innerText = '點擊畫布投放史萊姆';
                 }
 
                 function getX(e) {
@@ -470,32 +491,23 @@
                 touchLayer.addEventListener('touchstart', function(e) {
                     e.preventDefault();
                     if (e.touches.length === 1) dropAt(getX(e));
-                }, { passive: false });
-
-                touchLayer.addEventListener('touchend', function() {});
-
+                }, { passive:false });
+                touchLayer.addEventListener('touchend', function(){});
                 touchLayer.addEventListener('mousedown', function(e) {
                     e.preventDefault(); dropAt(getX(e));
                 });
 
-                var subtitles = ['不錯！', '厲害！', '太強！', '超精彩！', '無敵！'];
+                var subtitles = ['不錯！','厲害！','太強！','超精彩！','無敵！'];
 
                 function bombNear(x, y) {
-                    var blast = 130;
-                    var list = [];
-                    var all = Composite.allBodies(world);
+                    var blast = 130, list = [], all = Composite.allBodies(world);
                     for (var i = 0; i < all.length; i++) {
-                        var b = all[i];
-                        if (b.isStatic) continue;
+                        var b = all[i]; if (b.isStatic) continue;
                         var dx = b.position.x - x, dy = b.position.y - y;
-                        var d = Math.sqrt(dx * dx + dy * dy);
-                        if (d < blast && b.circleRadius && b.circleRadius <= 22) {
-                            list.push(b);
-                        }
+                        var d = Math.sqrt(dx*dx + dy*dy);
+                        if (d < blast && b.circleRadius && b.circleRadius <= 22) list.push(b);
                     }
-                    for (var j = 0; j < list.length; j++) {
-                        Composite.remove(world, list[j]);
-                    }
+                    for (var j = 0; j < list.length; j++) Composite.remove(world, list[j]);
                     return list.length;
                 }
 
@@ -510,48 +522,47 @@
                         if (a !== b) continue;
 
                         var now = Date.now();
-                        if (now - lastMergeAt < 1800) { combo++; } else { combo = 1; }
+                        if (now - lastMergeAt < 1800) combo++; else combo = 1;
                         lastMergeAt = now;
 
                         var lv = parseInt(a.split('_')[1], 10);
 
                         if (combo >= 5) {
-                            var cx = (pair.bodyA.position.x + pair.bodyB.position.x) / 2;
-                            var cy = (pair.bodyA.position.y + pair.bodyB.position.y) / 2;
+                            var cx = (pair.bodyA.position.x + pair.bodyB.position.x)/2;
+                            var cy = (pair.bodyA.position.y + pair.bodyB.position.y)/2;
                             var n = bombNear(cx, cy);
                             showCombo('BOMB', 'x' + n, '激烈！', true);
-                            flashScore('+' + (100 + n * 20), '#ff6b81');
-                            score += 100 + n * 20;
+                            showFloater('+' + (100 + n*20), '#ff6b81');
+                            score += 100 + n*20;
                             combo = 0; comboMultiplier = 1;
                             continue;
                         }
 
-                        comboMultiplier = Math.min(8, 1 + combo * 0.5);
+                        comboMultiplier = Math.min(8, 1 + combo*0.5);
                         if (lv >= slimeTypes.length - 1) continue;
 
-                        var sub = subtitles[Math.min(combo - 1, subtitles.length - 1)];
+                        var sub = subtitles[Math.min(combo-1, subtitles.length-1)];
                         showCombo('COMBO x' + combo, 'x' + comboMultiplier.toFixed(1), sub, false);
 
-                        var next = slimeTypes[lv + 1];
-                        var posX = (pair.bodyA.position.x + pair.bodyB.position.x) / 2;
-                        var posY = (pair.bodyA.position.y + pair.bodyB.position.y) / 2;
+                        var next = slimeTypes[lv+1];
+                        var posX = (pair.bodyA.position.x + pair.bodyB.position.x)/2;
+                        var posY = (pair.bodyA.position.y + pair.bodyB.position.y)/2;
 
                         Composite.remove(world, [pair.bodyA, pair.bodyB]);
                         merged[pair.bodyA.id] = true;
                         merged[pair.bodyB.id] = true;
 
                         var baby = Bodies.circle(posX, posY, next.radius, {
-                            restitution: 0.3, friction: 0.08, density: 0.0018,
-                            label: 'slime_' + (lv + 1),
-                            plugin: { createdAt: Date.now() },
-                            render: { fillStyle: next.color, strokeStyle: 'rgba(0,0,0,0.25)', lineWidth: 1 }
+                            restitution:0.3, friction:0.08, density:0.0018,
+                            label:'slime_' + (lv+1),
+                            plugin:{ createdAt:Date.now() },
+                            render:{ fillStyle:next.color, strokeStyle:'rgba(0,0,0,0.25)', lineWidth:1 }
                         });
                         Composite.add(world, baby);
 
                         var gained = Math.round(next.score * comboMultiplier);
-                        score += gained;
-                        scoreEl.innerText = score;
-                        flashScore('+' + gained, '#ffd166');
+                        score += gained; scoreEl.innerText = score;
+                        showFloater('+' + gained, '#ffd166');
                     }
                 });
 
@@ -559,34 +570,72 @@
                     if (gameOver) return;
                     var topY = 9999, all = Composite.allBodies(world);
                     for (var i = 0; i < all.length; i++) {
-                        var b = all[i];
-                        if (b.isStatic) continue;
-                        var top = b.position.y - (b.circleRadius || 10);
+                        var b = all[i]; if (b.isStatic) continue;
+                        var top = b.position.y - (b.circleRadius||10);
                         if (top < topY) topY = top;
                     }
-                    var ratio = Math.max(0, Math.min(1, (topY - 72) / 528));
-                    var r = Math.round(233 + 22 * ratio);
-                    var g = Math.round(69 + 51 * ratio);
-                    var bl = Math.round(96 + 106 * ratio);
+                    var ratio = Math.max(0, Math.min(1, (topY - 72)/528));
+                    var r = Math.round(233 + 22*ratio), g = Math.round(69 + 51*ratio), bl = Math.round(96 + 106*ratio);
                     dangerLine.render.fillStyle = 'rgb(' + r + ',' + g + ',' + bl + ')';
 
                     for (var j = 0; j < all.length; j++) {
-                        var bb = all[j];
-                        if (bb.isStatic) continue;
-                        var age = Date.now() - (bb.plugin && bb.plugin.createdAt ? bb.plugin.createdAt : 0);
+                        var bb = all[j]; if (bb.isStatic) continue;
+                        var age = Date.now() - ((bb.plugin && bb.plugin.createdAt) ? bb.plugin.createdAt : 0);
                         if (bb.position.y < 60 && Math.abs(bb.velocity.y) < 0.8 && age > GROW_MS) {
                             gameOver = true;
                             msgEl.innerText = '遊戲結束！最終得分：' + score;
                             if (score > best) {
                                 best = score; bestEl.innerText = best;
                                 localStorage.setItem('slimeBest', String(best));
+                                saveLeaderboard();
                             }
                             break;
                         }
                     }
                 });
 
+                // Leaderboard
+                function lbKey() { return 'slimeLb'; }
+                function readLb() { try { return JSON.parse(localStorage.getItem(lbKey())||'[]'); } catch(e){ return []; } }
+                function writeLb(arr) { localStorage.setItem(lbKey(), JSON.stringify(arr)); }
+                function saveLeaderboard() {
+                    var name = (document.getElementById('playerName').value || '??').trim();
+                    if (!name) return;
+                    var lb = readLb();
+                    var idx = -1;
+                    for (var i = 0; i < lb.length; i++) { if (lb[i].name === name) { idx = i; break; } }
+                    if (idx >= 0) {
+                        if (score > lb[idx].score) lb[idx].score = score;
+                    } else {
+                        lb.push({ name:name, score:score });
+                    }
+                    lb.sort(function(a,b){ return b.score - a.score; });
+                    if (lb.length > 20) lb = lb.slice(0,20);
+                    writeLb(lb);
+                }
+                function renderLb() {
+                    var lb = readLb();
+                    var ul = document.getElementById('lbList');
+                    var empty = document.getElementById('lbEmpty');
+                    ul.innerHTML = '';
+                    if (lb.length === 0) { empty.style.display = 'block'; return; }
+                    empty.style.display = 'none';
+                    lb.forEach(function(entry, i) {
+                        var li = document.createElement('li');
+                        li.innerHTML = '<div class="rank">#' + (i+1) + '</div><div class="name">' + escapeHtml(entry.name) + '</div><div class="pts">' + entry.score + '</div>';
+                        ul.appendChild(li);
+                    });
+                }
+                function escapeHtml(s) { return s.replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
                 document.getElementById('startBtn').addEventListener('click', function() {
+                    var name = (document.getElementById('playerName').value || '').trim();
+                    if (!name) {
+                        document.getElementById('playerName').style.borderColor = '#e94560';
+                        return;
+                    }
+                    document.getElementById('playerName').style.borderColor = 'rgba(255,255,255,0.25)';
+                    localStorage.setItem('slimePlayer', name);
                     document.getElementById('startOverlay').style.display = 'none';
                     nextLv = pickNext();
                 });
@@ -601,7 +650,21 @@
 
                 document.getElementById('restart').addEventListener('click', resetGame);
 
+                document.getElementById('lbCardHeader').addEventListener('click', function() {
+                    renderLb();
+                    document.getElementById('lbModal').classList.add('open');
+                });
+
+                document.getElementById('closeLb').addEventListener('click', function() {
+                    document.getElementById('lbModal').classList.remove('open');
+                });
+
                 nextLv = pickNext();
+                renderLb();
+
+                if (window.StatusBar && typeof window.StatusBar.hide === 'function') {
+                    setTimeout(function(){ try{ window.StatusBar.hide(); }catch(e){} }, 100);
+                }
             })();
         } catch (e) {
             document.getElementById('gameMsg').innerText = '啟動失敗：' + e.message;

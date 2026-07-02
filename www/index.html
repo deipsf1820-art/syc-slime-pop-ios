@@ -104,6 +104,10 @@
             flex: 1;
             max-height: 68vh;
             touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         #bottomBar {
@@ -212,6 +216,7 @@
             box-shadow: 0 10px 30px rgba(233, 69, 96, 0.45);
             margin-bottom: 10px;
             cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .btn.secondary {
@@ -276,6 +281,7 @@
             font-size: 14px;
             font-weight: 700;
             cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
         }
     </style>
     <script src="matter.min.js"></script>
@@ -300,7 +306,7 @@
         <canvas id="gameCanvas" width="400" height="600"></canvas>
 
         <div id="bottomBar">
-            <div class="pill">
+            <div class="pill" id="rulesPill">
                 <div class="pill-label">遊戲規則</div>
                 <div class="dot" id="ruleDot"></div>
             </div>
@@ -309,7 +315,7 @@
             </div>
         </div>
 
-        <div id="msg">按住畫布水平拖曳，鬆開投放史萊姆。</div>
+        <div id="msg">按住畫面水平拖曳，鬆開投放史萊姆。</div>
     </div>
 
     <div id="startOverlay">
@@ -328,7 +334,7 @@
                 <li>按住畫面水平移動調整位置，鬆開投放史萊姆。</li>
                 <li>相同等級與顏色碰撞會進化成更高等級。</li>
                 <li>每次進化都可賺取積分，等級愈高分數愈高。</li>
-                <li>尽量避免堆到頂部紅线，超過紅线即 Game Over。</li>
+                <li>盡量避免堆到頂部紅線，超過紅線即 Game Over。</li>
                 <li>下一隻史萊姆會預覽，左上角最高分會記住。</li>
                 <li>隨時可按「重新開始」重置遊戲。</li>
             </ul>
@@ -337,224 +343,256 @@
     </div>
 
     <script>
+        window.onerror = function(msg, url, line) {
+            var el = document.getElementById('msg');
+            if (el) el.innerText = '錯誤：' + msg + ' (行 ' + line + ')';
+            return true;
+        };
+
+        window.addEventListener('unhandledrejection', function(e) {
+            var el = document.getElementById('msg');
+            if (el) el.innerText = '未處理錯誤：' + (e.reason && e.reason.message ? e.reason.message : String(e.reason));
+        });
+
         try {
-            const { Engine, Render, Runner, Bodies, Composite, Events } = Matter;
+            (function() {
+                var Matter = window.Matter;
+                if (!Matter) throw new Error('Matter.js 冇載入');
 
-            const engine = Engine.create();
-            const world = engine.world;
-            engine.gravity.y = 1.2;
+                var Engine = Matter.Engine,
+                    Render = Matter.Render,
+                    Runner = Matter.Runner,
+                    Bodies = Matter.Bodies,
+                    Composite = Matter.Composite,
+                    Events = Matter.Events;
 
-            const canvas = document.getElementById('gameCanvas');
-            const scoreEl = document.getElementById('score');
-            const bestEl = document.getElementById('best');
-            const nextDot = document.getElementById('nextDot');
-            const ruleDot = document.getElementById('ruleDot');
-            const msgEl = document.getElementById('msg');
+                var canvas = document.getElementById('gameCanvas');
+                var scoreEl = document.getElementById('score');
+                var bestEl = document.getElementById('best');
+                var nextDot = document.getElementById('nextDot');
+                var ruleDot = document.getElementById('ruleDot');
+                var msgEl = document.getElementById('msg');
 
-            let score = 0;
-            let best = parseInt(localStorage.getItem('slimeBest') || '0', 10);
-            bestEl.innerText = best;
+                var engine = Engine.create();
+                var world = engine.world;
+                engine.gravity.y = 1.2;
 
-            const slimeTypes = [
-                { radius: 14, color: '#00f5d4', score: 2 },
-                { radius: 22, color: '#00bbf9', score: 4 },
-                { radius: 30, color: '#f15bb5', score: 8 },
-                { radius: 38, color: '#fee440', score: 16 },
-                { radius: 46, color: '#9b5de5', score: 32 },
-                { radius: 54, color: '#ff006e', score: 64 }
-            ];
-
-            const render = Render.create({
-                canvas,
-                engine,
-                options: {
-                    width: 400,
-                    height: 600,
-                    wireframes: false,
-                    background: 'transparent',
-                    pixelRatio: Math.min(window.devicePixelRatio || 1, 2)
-                }
-            });
-
-            Render.run(render);
-            const runner = Runner.create();
-            Runner.run(runner, engine);
-
-            const wallOptions = { isStatic: true, render: { fillStyle: '#0f3460' } };
-            const ground = Bodies.rectangle(200, 610, 420, 24, wallOptions);
-            const leftWall = Bodies.rectangle(-10, 300, 24, 600, wallOptions);
-            const rightWall = Bodies.rectangle(410, 300, 24, 600, wallOptions);
-            Composite.add(world, [ground, leftWall, rightWall]);
-
-            const dangerLine = Bodies.rectangle(200, 74, 400, 4, {
-                isStatic: true,
-                isSensor: true,
-                render: { visible: true, fillStyle: '#e94560' }
-            });
-            Composite.add(world, dangerLine);
-
-            let gameOver = false;
-            let nextLv = 0;
-            let pendingX = 200;
-
-            function getEventX(e) {
-                const rect = canvas.getBoundingClientRect();
-                const clientX = e.touches ? e.touches[0].clientX : (e.changedTouches ? e.changedTouches[0].clientX : e.clientX);
-                const x = ((clientX - rect.left) / rect.width) * 400;
-                return Math.max(36, Math.min(364, x));
-            }
-
-            function pickNext() {
-                const lv = Math.floor(Math.random() * 3);
-                const t = slimeTypes[lv];
-                nextDot.style.backgroundColor = t.color;
-                nextDot.style.color = t.color;
-                ruleDot.style.backgroundColor = t.color;
-                ruleDot.style.color = t.color;
-                return lv;
-            }
-
-            function dropAt(x) {
-                if (gameOver) return;
-                const type = slimeTypes[nextLv];
-                const slime = Bodies.circle(x, 40, type.radius, {
-                    restitution: 0.25,
-                    friction: 0.08,
-                    density: 0.0018,
-                    label: 'slime_' + nextLv,
-                    render: {
-                        fillStyle: type.color,
-                        strokeStyle: 'rgba(0,0,0,0.25)',
-                        lineWidth: 1
+                var render = Render.create({
+                    canvas: canvas,
+                    engine: engine,
+                    options: {
+                        width: 400,
+                        height: 600,
+                        wireframes: false,
+                        background: 'transparent',
+                        pixelRatio: Math.min(window.devicePixelRatio || 1, 2)
                     }
                 });
-                Composite.add(world, slime);
-                nextLv = pickNext();
-            }
+                Render.run(render);
 
-            function resetGame() {
-                const bodies = Composite.allBodies(world);
-                for (const body of bodies) {
-                    if (!body.isStatic) {
-                        Composite.remove(world, body);
-                    }
+                var runner = Runner.create();
+                Runner.run(runner, engine);
+
+                function wallOpts() {
+                    return { isStatic: true, render: { fillStyle: '#0f3460' } };
                 }
-                score = 0;
-                scoreEl.innerText = '0';
-                gameOver = false;
-                nextLv = pickNext();
-                msgEl.innerText = '按住畫布水平拖曳，鬆開投放史萊姆。';
-            }
+                var ground = Bodies.rectangle(200, 610, 420, 24, wallOpts());
+                var leftWall = Bodies.rectangle(-10, 300, 24, 600, wallOpts());
+                var rightWall = Bodies.rectangle(410, 300, 24, 600, wallOpts());
+                Composite.add(world, [ground, leftWall, rightWall]);
 
-            canvas.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                pendingX = getEventX(e);
-            });
-            canvas.addEventListener('mousemove', (e) => {
-                if (e.buttons === 1) pendingX = getEventX(e);
-            });
-            canvas.addEventListener('mouseup', () => {
-                dropAt(pendingX);
-            });
+                var dangerLine = Bodies.rectangle(200, 72, 400, 4, {
+                    isStatic: true,
+                    isSensor: true,
+                    render: { visible: true, fillStyle: '#e94560' }
+                });
+                Composite.add(world, dangerLine);
 
-            canvas.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                pendingX = getEventX(e);
-            }, { passive: false });
-            canvas.addEventListener('touchmove', (e) => {
-                e.preventDefault();
-                pendingX = getEventX(e);
-            }, { passive: false });
-            canvas.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                dropAt(pendingX);
-            });
+                var score = 0;
+                var best = parseInt(localStorage.getItem('slimeBest') || '0', 10);
+                bestEl.innerText = best;
 
-            Events.on(engine, 'collisionStart', function(event) {
-                const pairs = event.pairs;
-                const merged = new Set();
+                var slimeTypes = [
+                    { radius: 14, color: '#00f5d4', score: 2 },
+                    { radius: 22, color: '#00bbf9', score: 4 },
+                    { radius: 30, color: '#f15bb5', score: 8 },
+                    { radius: 38, color: '#fee440', score: 16 },
+                    { radius: 46, color: '#9b5de5', score: 32 },
+                    { radius: 54, color: '#ff006e', score: 64 }
+                ];
 
-                pairs.forEach(pair => {
-                    const labelA = pair.bodyA.label;
-                    const labelB = pair.bodyB.label;
-                    if (!labelA || !labelB) return;
-                    if (!labelA.startsWith('slime_') || !labelB.startsWith('slime_')) return;
-                    if (merged.has(pair.bodyA.id) || merged.has(pair.bodyB.id)) return;
-                    if (labelA !== labelB) return;
+                var gameOver = false;
+                var nextLv = 0;
+                var pendingX = 200;
+                var lockDrop = false;
 
-                    const currentLv = parseInt(labelA.split('_')[1], 10);
-                    if (currentLv >= slimeTypes.length - 1) return;
+                function getEventX(e) {
+                    var rect = canvas.getBoundingClientRect();
+                    var cx = 0;
+                    if (e.touches && e.touches.length > 0) cx = e.touches[0].clientX;
+                    else if (e.changedTouches && e.changedTouches.length > 0) cx = e.changedTouches[0].clientX;
+                    else cx = e.clientX;
+                    var x = ((cx - rect.left) / rect.width) * 400;
+                    return Math.max(36, Math.min(364, x));
+                }
 
-                    const nextType = slimeTypes[currentLv + 1];
-                    const posX = (pair.bodyA.position.x + pair.bodyB.position.x) / 2;
-                    const posY = (pair.bodyA.position.y + pair.bodyB.position.y) / 2;
+                function pickNext() {
+                    var lv = Math.floor(Math.random() * 3);
+                    var t = slimeTypes[lv];
+                    nextDot.style.backgroundColor = t.color;
+                    nextDot.style.color = t.color;
+                    ruleDot.style.backgroundColor = t.color;
+                    ruleDot.style.color = t.color;
+                    return lv;
+                }
 
-                    Composite.remove(world, [pair.bodyA, pair.bodyB]);
-                    merged.add(pair.bodyA.id);
-                    merged.add(pair.bodyB.id);
+                function dropAt(x) {
+                    if (gameOver) return;
+                    if (lockDrop) return;
+                    lockDrop = true;
+                    setTimeout(function() { lockDrop = false; }, 350);
 
-                    const newSlime = Bodies.circle(posX, posY, nextType.radius, {
-                        restitution: 0.3,
+                    var type = slimeTypes[nextLv];
+                    var slime = Bodies.circle(x, 40, type.radius, {
+                        restitution: 0.25,
                         friction: 0.08,
                         density: 0.0018,
-                        label: 'slime_' + (currentLv + 1),
+                        label: 'slime_' + nextLv,
                         render: {
-                            fillStyle: nextType.color,
+                            fillStyle: type.color,
                             strokeStyle: 'rgba(0,0,0,0.25)',
                             lineWidth: 1
                         }
                     });
-                    Composite.add(world, newSlime);
-
-                    score += nextType.score;
-                    scoreEl.innerText = score;
-                });
-            });
-
-            Events.on(engine, 'afterUpdate', function() {
-                if (gameOver) return;
-                const allBodies = Composite.allBodies(world);
-                for (const body of allBodies) {
-                    if (body.isStatic) continue;
-                    if (body.position.y < 60 && Math.abs(body.velocity.y) < 0.8) {
-                        gameOver = true;
-                        msgEl.innerText = '遊戲結束！最終得分：' + score;
-                        if (score > best) {
-                            best = score;
-                            bestEl.innerText = best;
-                            localStorage.setItem('slimeBest', String(best));
-                        }
-                        break;
-                    }
+                    Composite.add(world, slime);
+                    nextLv = pickNext();
                 }
-            });
 
-            document.getElementById('startBtn').addEventListener('click', () => {
-                document.getElementById('startOverlay').style.display = 'none';
-                pickNext();
-            });
+                function resetGame() {
+                    var bodies = Composite.allBodies(world);
+                    for (var i = 0; i < bodies.length; i++) {
+                        if (!bodies[i].isStatic) {
+                            Composite.remove(world, bodies[i]);
+                        }
+                    }
+                    score = 0;
+                    scoreEl.innerText = '0';
+                    gameOver = false;
+                    nextLv = pickNext();
+                    msgEl.innerText = '按住畫布水平拖曳，鬆開投放史萊姆。';
+                }
 
-            document.getElementById('rulesBtn').addEventListener('click', () => {
-                document.getElementById('rulesModal').classList.add('open');
-            });
+                // Pointer events work for both mouse and touch
+                canvas.addEventListener('pointerdown', function(e) {
+                    e.preventDefault();
+                    canvas.setPointerCapture(e.pointerId);
+                    pendingX = getEventX(e);
+                });
 
-            document.getElementById('closeRules').addEventListener('click', () => {
-                document.getElementById('rulesModal').classList.remove('open');
-            });
+                canvas.addEventListener('pointermove', function(e) {
+                    if (e.buttons > 0) {
+                        pendingX = getEventX(e);
+                    }
+                });
 
-            document.getElementById('restart').addEventListener('click', () => {
-                resetGame();
-            });
+                canvas.addEventListener('pointerup', function(e) {
+                    e.preventDefault();
+                    dropAt(pendingX);
+                });
 
-            nextLv = pickNext();
+                // Prevent scrolling on canvas only
+                canvas.addEventListener('touchstart', function(e) { e.preventDefault(); }, { passive: false });
+                canvas.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
 
-            if (window.StatusBar && typeof window.StatusBar.hide === 'function') {
-                setTimeout(() => {
-                    try { window.StatusBar.hide(); } catch (e) { /* ignore */ }
-                }, 100);
-            }
+                Events.on(engine, 'collisionStart', function(event) {
+                    var pairs = event.pairs;
+                    var merged = {};
+                    for (var i = 0; i < pairs.length; i++) {
+                        var pair = pairs[i];
+                        var labelA = pair.bodyA.label;
+                        var labelB = pair.bodyB.label;
+                        if (!labelA || !labelB) continue;
+                        if (!labelA.indexOf('slime_') === 0 || !labelB.indexOf('slime_') === 0) continue;
+                        if (merged[pair.bodyA.id] || merged[pair.bodyB.id]) continue;
+                        if (labelA !== labelB) continue;
+
+                        var currentLv = parseInt(labelA.split('_')[1], 10);
+                        if (currentLv >= slimeTypes.length - 1) continue;
+
+                        var nextType = slimeTypes[currentLv + 1];
+                        var posX = (pair.bodyA.position.x + pair.bodyB.position.x) / 2;
+                        var posY = (pair.bodyA.position.y + pair.bodyB.position.y) / 2;
+
+                        Composite.remove(world, [pair.bodyA, pair.bodyB]);
+                        merged[pair.bodyA.id] = true;
+                        merged[pair.bodyB.id] = true;
+
+                        var newSlime = Bodies.circle(posX, posY, nextType.radius, {
+                            restitution: 0.3,
+                            friction: 0.08,
+                            density: 0.0018,
+                            label: 'slime_' + (currentLv + 1),
+                            render: {
+                                fillStyle: nextType.color,
+                                strokeStyle: 'rgba(0,0,0,0.25)',
+                                lineWidth: 1
+                            }
+                        });
+                        Composite.add(world, newSlime);
+
+                        score += nextType.score;
+                        scoreEl.innerText = score;
+                    }
+                });
+
+                Events.on(engine, 'afterUpdate', function() {
+                    if (gameOver) return;
+                    var allBodies = Composite.allBodies(world);
+                    for (var i = 0; i < allBodies.length; i++) {
+                        var body = allBodies[i];
+                        if (body.isStatic) continue;
+                        if (body.position.y < 60 && Math.abs(body.velocity.y) < 0.8) {
+                            gameOver = true;
+                            msgEl.innerText = '遊戲結束！最終得分：' + score;
+                            if (score > best) {
+                                best = score;
+                                bestEl.innerText = best;
+                                localStorage.setItem('slimeBest', String(best));
+                            }
+                            break;
+                        }
+                    }
+                });
+
+                document.getElementById('startBtn').addEventListener('click', function() {
+                    document.getElementById('startOverlay').style.display = 'none';
+                    nextLv = pickNext();
+                });
+
+                document.getElementById('rulesBtn').addEventListener('click', function() {
+                    document.getElementById('rulesModal').classList.add('open');
+                });
+
+                document.getElementById('closeRules').addEventListener('click', function() {
+                    document.getElementById('rulesModal').classList.remove('open');
+                });
+
+                document.getElementById('restart').addEventListener('click', function() {
+                    resetGame();
+                });
+
+                nextLv = pickNext();
+
+                if (window.StatusBar && typeof window.StatusBar.hide === 'function') {
+                    setTimeout(function() {
+                        try { window.StatusBar.hide(); } catch (e) {}
+                    }, 100);
+                }
+            })();
         } catch (e) {
-            document.getElementById('msg').innerText = '遊戲啟動失敗：' + e.message;
+            var el = document.getElementById('msg');
+            if (el) el.innerText = '啟動失敗：' + e.message;
+            console.error(e);
         }
     </script>
 </body>

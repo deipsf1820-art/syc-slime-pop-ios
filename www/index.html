@@ -104,10 +104,6 @@
             flex: 1;
             max-height: 68vh;
             touch-action: none;
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-touch-callout: none;
-            -webkit-tap-highlight-color: transparent;
         }
 
         #bottomBar {
@@ -216,7 +212,6 @@
             box-shadow: 0 10px 30px rgba(233, 69, 96, 0.45);
             margin-bottom: 10px;
             cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
         }
 
         .btn.secondary {
@@ -281,7 +276,6 @@
             font-size: 14px;
             font-weight: 700;
             cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
         }
     </style>
     <script src="matter.min.js"></script>
@@ -315,7 +309,7 @@
             </div>
         </div>
 
-        <div id="msg">按住畫面水平拖曳，鬆開投放史萊姆。</div>
+        <div id="msg">按住畫布水平拖曳，鬆開投放史萊姆。</div>
     </div>
 
     <div id="startOverlay">
@@ -450,7 +444,7 @@
                     if (gameOver) return;
                     if (lockDrop) return;
                     lockDrop = true;
-                    setTimeout(function() { lockDrop = false; }, 350);
+                    setTimeout(function() { lockDrop = false; }, 150);
 
                     var type = slimeTypes[nextLv];
                     var slime = Bodies.circle(x, 40, type.radius, {
@@ -482,25 +476,38 @@
                     msgEl.innerText = '按住畫布水平拖曳，鬆開投放史萊姆。';
                 }
 
-                // Pointer events work for both mouse and touch
+                var pointerDown = false;
+
                 canvas.addEventListener('pointerdown', function(e) {
                     e.preventDefault();
-                    canvas.setPointerCapture(e.pointerId);
+                    pointerDown = true;
                     pendingX = getEventX(e);
                 });
 
                 canvas.addEventListener('pointermove', function(e) {
-                    if (e.buttons > 0) {
-                        pendingX = getEventX(e);
-                    }
+                    if (!pointerDown) return;
+                    pendingX = getEventX(e);
                 });
 
                 canvas.addEventListener('pointerup', function(e) {
                     e.preventDefault();
-                    dropAt(pendingX);
+                    if (pointerDown) {
+                        pointerDown = false;
+                        dropAt(pendingX);
+                    }
                 });
 
-                // Prevent scrolling on canvas only
+                canvas.addEventListener('pointercancel', function(e) {
+                    pointerDown = false;
+                });
+
+                canvas.addEventListener('pointerleave', function(e) {
+                    if (pointerDown) {
+                        pointerDown = false;
+                        dropAt(pendingX);
+                    }
+                });
+
                 canvas.addEventListener('touchstart', function(e) { e.preventDefault(); }, { passive: false });
                 canvas.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
 
@@ -512,7 +519,7 @@
                         var labelA = pair.bodyA.label;
                         var labelB = pair.bodyB.label;
                         if (!labelA || !labelB) continue;
-                        if (!labelA.indexOf('slime_') === 0 || !labelB.indexOf('slime_') === 0) continue;
+                        if (labelA.indexOf('slime_') !== 0 || labelB.indexOf('slime_') !== 0) continue;
                         if (merged[pair.bodyA.id] || merged[pair.bodyB.id]) continue;
                         if (labelA !== labelB) continue;
 

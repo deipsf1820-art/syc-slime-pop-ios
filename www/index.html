@@ -14,7 +14,7 @@ html,body{margin:0;padding:0;background:#080a1f;color:#fff;font-family:-apple-sy
 #header{width:100%;display:flex;gap:7px;flex-shrink:0}
 .hcard{flex:1;text-align:center;background:linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0.05));border:1px solid rgba(255,255,255,0.18);border-radius:14px;padding:7px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 .hlabel{font-size:9px;text-transform:uppercase;letter-spacing:0.16em;color:rgba(255,255,255,0.65);margin-bottom:2px;font-weight:800;line-height:1}
-.hvalue{font-size:18px;font-weight:900;background:linear-gradient(135deg,#fff,#ffd166);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-shadow:0 0 0 transparent;line-height:1.1}
+.hvalue{font-size:18px;font-weight:900;background:linear-gradient(135deg,#fff,#ffd166);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1}
 .hdot{width:22px;height:22px;border-radius:50%;box-shadow:0 0 16px currentColor,inset 0 0 10px rgba(0,0,0,0.35);flex-shrink:0;border:1.5px solid rgba(255,255,255,0.25)}
 #canvasWrap{position:relative;width:100%;flex:1;min-height:0;overflow:hidden;border-radius:16px;background:linear-gradient(180deg,#0f1832,#091130);box-shadow:0 18px 40px rgba(0,0,0,0.55),inset 0 0 0 1px rgba(255,255,255,0.08)}
 #gameCanvas{display:block;width:100%;height:100%}
@@ -51,6 +51,9 @@ html,body{margin:0;padding:0;background:#080a1f;color:#fff;font-family:-apple-sy
 #lbList .nm{flex:1;color:rgba(255,255,255,0.9);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #lbList .sc{color:#fff;font-weight:900}
 #lbEmpty{text-align:center;color:rgba(255,255,255,0.5);font-size:12px;padding:18px 0;display:none}
+
+#stageHud{position:absolute;left:0;right:0;top:8px;text-align:center;pointer-events:none;z-index:10}
+#stageHud .stageText{display:inline-block;background:rgba(0,0,0,0.55);border:1px solid rgba(255,255,255,0.18);border-radius:999px;padding:5px 14px;font-size:11px;font-weight:900;color:#ffd166;letter-spacing:0.18em;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 </style>
 <script src="matter.min.js"></script>
 </head>
@@ -64,6 +67,7 @@ html,body{margin:0;padding:0;background:#080a1f;color:#fff;font-family:-apple-sy
     </div>
     <div id="canvasWrap">
         <canvas id="gameCanvas"></canvas>
+        <div id="stageHud"><span class="stageText" id="stageText">STAGE 1</span></div>
     </div>
     <div id="bottomBar">
         <div class="pill" id="rulesPill" style="cursor:pointer"><div class="plabel">遊戲規則</div></div>
@@ -131,20 +135,30 @@ Composite.add(world,[makeWall(W/2,H+12,W+40,24),makeWall(-12,H/2,24,H+40),makeWa
 var danger=Bodies.rectangle(W/2,Math.max(58,H*0.1),Math.max(W,400),4,{isStatic:true,isSensor:true,render:{visible:true,fillStyle:'#ff4070'}});
 Composite.add(world,danger);
 
-var score=0,best=parseInt(localStorage.getItem('slimeBest')||'0',10);
-var types=[];
-function hslToHex(h,s,l){var a=s*Math.min(l,1-l);var f=function(n){var k=(n+h/30)%12;return l-a*Math.max(Math.min(k-3,9-k,1),-1);};return '#'+[f(0),f(8),f(4)].map(function(x){return Math.round(x*255).toString(16).padStart(2,'0')}).join('');}
-for(var lv=0;lv<99;lv++){var hue=210+lv*2.4; var sat=82+Math.sin(lv/99*Math.PI)*18; var light=58+Math.sin(lv/99*Math.PI*2)*9; types.push({id:''+lv,r:12+lv*0.85,c:hslToHex(hue,sat,light),s:lv*lv*2+20})}
+var score=0,best=parseInt(localStorage.getItem('slimeBest')||'0',10),stageThresholds=[80,180,320,500,720,980,1280,1620,2000,2500,3000,3600,4300,5100,6000];
+var types=[], palette=['#ff4070','#ffd166','#06d6a0','#118ab2','#ef476f','#7209b7','#f77f00','#4cc9f0','#e94560','#00f5d4'];
+function makePalette(){
+    types=[];
+    for(var i=0;i<10;i++){types.push({id:''+i,r:10+i*0.5,c:palette[i],s:18+i*4})}
+    for(var lv=10;lv<99;lv++){var hue=(210+lv*2.7)%360;var hex='#'+((1<<24)+((Math.round(128+127*Math.sin(lv*1.3))<<16)+((Math.round(128+127*Math.sin(lv*2.1+1))<<8))+Math.round(128+127*Math.sin(lv*0.7+2)))).toString(16).slice(1);types.push({id:''+lv,r:10+lv*0.6,c:hex,s:lv*lv*2+20})}
+}
+makePalette();
 
-var gameOver=false,nextLv=0,lockDrop=false,combo=0,lastMerge=0,cm=1,comboT=null,gameMsg=document.createElement('div');gameMsg.id='gameMsg';gameMsg.style.cssText='position:absolute;left:0;right:0;bottom:10px;text-align:center;font-size:12px;font-weight:800;color:rgba(255,255,255,0.92);pointer-events:none;z-index:20;text-shadow:0 2px 10px rgba(0,0,0,0.85)';document.getElementById('canvasWrap').appendChild(gameMsg);
-function pickNext(){return Math.floor(Math.random()*Math.min(5,types.length))}
+var gameOver=false,nextLv=0,lockDrop=false,combo=0,lastMerge=0,cm=1,stage=1,stageCleared=false;
+var gameMsg=document.createElement('div');gameMsg.id='gameMsg';gameMsg.style.cssText='position:absolute;left:0;right:0;bottom:10px;text-align:center;font-size:12px;font-weight:800;color:rgba(255,255,255,0.95);pointer-events:none;z-index:20;text-shadow:0 2px 10px rgba(0,0,0,0.85)';document.getElementById('canvasWrap').appendChild(gameMsg);
+var stageText=document.getElementById('stageText');
+function pickNext(){return Math.floor(Math.random()*Math.min(10,types.length))}
 function refreshNextDot(){var dot=document.getElementById('nextDot');dot.style.backgroundColor=types[nextLv].c;dot.style.color=types[nextLv].c}
-function showCombo(type,main,sub,isBomb){}
+function updateStage(){var idx=Math.min(stage-1,stageThresholds.length-1);stageText.innerText='STAGE '+stage+' · '+(stageCleared?'CLEAR':'('+score+' / '+stageThresholds[idx]+')');if(stageCleared){stageText.style.color='#06d6a0';stageText.style.borderColor='rgba(6,214,160,0.6)'}else{stageText.style.color='#ffd166';stageText.style.borderColor='rgba(255,255,255,0.18)'}}
+function stageUp(){stage++;stageCleared=false;updateStage();stageText.style.transform='scale(1.25)';setTimeout(function(){stageText.style.transform='scale(1)'},220)}
+function checkStageClear(){if(stageCleared)return;var idx=Math.min(stage-1,stageThresholds.length-1);if(idx<stageThresholds.length&&score>=stageThresholds[idx]){stageCleared=true;updateStage();spawnFirework(W/2,H/3,'#ffd166',64);spawnFirework(W/2,H/3,'#06d6a0',64);gameMsg.innerText='STAGE CLEAR！';setTimeout(function(){stageUp();gameMsg.innerText=''},1400)}}
+function showCombo(type,main,sub,isBomb){gameMsg.innerText=type+' '+(isBomb?'💥 ':'')+main+' - '+sub;setTimeout(function(){if(!gameOver)gameMsg.innerText=''},1200)}
 
 var fwParts=[];
 function spawnFirework(x,y,color,count){var n=count||28;for(var i=0;i<n;i++){var a=(Math.PI*2/n)*i,speed=2.2+Math.random()*3.2;fwParts.push({x:x,y:y,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:1,decay:0.025+Math.random()*0.025,color:color||'#ffd166',size:2.2+Math.random()*2.2})}}
 function drawFireworks(){ctx.save();for(var i=fwParts.length-1;i>=0;i--){var p=fwParts[i];p.x+=p.vx;p.y+=p.vy;p.vy+=0.08;p.life-=p.decay;if(p.life<=0){fwParts.splice(i,1);continue;}ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2);ctx.fill()}ctx.restore();}
-function loop(){drawFireworks();requestAnimationFrame(loop)}
+function drawSlimeGlow(){ctx.save();var all=Composite.allBodies(world);var map={};for(var i=0;i<all.length;i++){var b=all[i];if(b.isStatic||!b.label||b.label.indexOf('slime_')!==0)continue;var lv=parseInt(b.label.split('_')[1],10);map[lv]=(map[lv]||0)+1}for(var j=0;j<all.length;j++){var bb=all[j];if(bb.isStatic||!bb.label||bb.label.indexOf('slime_')!==0)continue;var lv2=parseInt(bb.label.split('_')[1],10);if(map[lv2]>=2){ctx.globalAlpha=0.18+0.12*Math.sin(Date.now()*0.006);ctx.fillStyle=types[lv2].c;ctx.beginPath();ctx.arc(bb.position.x,bb.position.y,(bb.circleRadius||8)+6,0,Math.PI*2);ctx.fill()}}ctx.restore();}
+function loop(){ctx.save();ctx.clearRect(0,0,W||400,H||600);drawSlimeGlow();drawFireworks();requestAnimationFrame(loop)}
 requestAnimationFrame(loop);
 
 function dropAt(x){
@@ -153,7 +167,7 @@ function dropAt(x){
     Composite.add(world,Bodies.circle(x,28,t.r,{restitution:0.25,friction:0.08,density:0.0018,label:'slime_'+nextLv,plugin:{createdAt:Date.now()},render:{fillStyle:t.c,strokeStyle:'rgba(0,0,0,0.25)',lineWidth:1}}));
     nextLv=pickNext();refreshNextDot();
 }
-function resetGame(){var all=Composite.allBodies(world);for(var i=0;i<all.length;i++)if(!all[i].isStatic)Composite.remove(world,all[i]);score=0;document.getElementById('score').innerText='0';combo=0;cm=1;gameOver=false;nextLv=pickNext();gameMsg.innerText='點擊畫布投放史萊姆';fwParts=[];}
+function resetGame(){var all=Composite.allBodies(world);for(var i=0;i<all.length;i++)if(!all[i].isStatic)Composite.remove(world,all[i]);score=0;document.getElementById('score').innerText='0';combo=0;cm=1;gameOver=false;nextLv=pickNext();stage=1;stageCleared=false;updateStage();gameMsg.innerText='點擊畫布投放史萊姆';fwParts=[];}
 function getX(e){var r=canvas.getBoundingClientRect();var cx=(e.touches&&e.touches[0])?e.touches[0].clientX:(e.changedTouches&&e.changedTouches[0])?e.changedTouches[0].clientX:e.clientX;var x=((cx-r.left)/r.width)*W;return Math.max(20,Math.min(W-20,x))}
 canvas.addEventListener('touchstart',function(e){e.preventDefault();if(e.touches.length===1)dropAt(getX(e))},{passive:false});
 canvas.addEventListener('touchend',function(){});
@@ -161,7 +175,7 @@ canvas.addEventListener('mousedown',function(e){e.preventDefault();dropAt(getX(e
 
 function bombNear(bx,by){var blast=130,out=[],all=Composite.allBodies(world);for(var i=0;i<all.length;i++){var b=all[i];if(b.isStatic)continue;var dx=b.position.x-bx,dy=b.position.y-by,d=Math.sqrt(dx*dx+dy*dy);if(d<blast&&b.circleRadius&&b.circleRadius<=22)out.push(b)}for(var j=0;j<out.length;j++){var bb=out[j];spawnFirework(bb.position.x,bb.position.y,types[bb.label.split('_')[1]].c);Composite.remove(world,bb)}return out.length}
 var subs=['不錯！','厲害！','太強！','超精彩！','無敵！'];
-Events.on(engine,'collisionStart',function(ev){var pairs=ev.pairs,merged={};for(var i=0;i<pairs.length;i++){var p=pairs[i],a=p.bodyA.label,b=p.bodyB.label;if(!a||!b)continue;if(a.indexOf('slime_')!==0||b.indexOf('slime_')!==0)continue;if(merged[p.bodyA.id]||merged[p.bodyB.id])continue;if(a!==b)continue;var now=Date.now();if(now-lastMerge<1800)combo++;else combo=1;lastMerge=now;var lv=parseInt(a.split('_')[1],10);if(combo>=5){var cx2=(p.bodyA.position.x+p.bodyB.position.x)/2,cy2=(p.bodyA.position.y+p.bodyB.position.y)/2;var n=bombNear(cx2,cy2);combo=0;cm=1;continue;}cm=Math.min(8,1+combo*0.5);if(lv>=types.length-1){var cx3=(p.bodyA.position.x+p.bodyB.position.x)/2,cy3=(p.bodyA.position.y+p.bodyB.position.y)/2;spawnFirework(cx3,cy3,'#ffd166',48);Composite.remove(world,[p.bodyA,p.bodyB]);merged[p.bodyA.id]=true;merged[p.bodyB.id]=true;var bonus=Math.round(types[lv].s*cm*3);score+=bonus;document.getElementById('score').innerText=score;continue;}showCombo('COMBO x'+combo,'x'+cm.toFixed(1),subs[Math.min(combo-1,subs.length-1)],false);var nx=types[lv+1],px=(p.bodyA.position.x+p.bodyB.position.x)/2,py=(p.bodyA.position.y+p.bodyB.position.y)/2;spawnFirework(px,py,nx.c);Composite.remove(world,[p.bodyA,p.bodyB]);merged[p.bodyA.id]=true;merged[p.bodyB.id]=true;var baby=Bodies.circle(px,py,nx.r,{restitution:0.3,friction:0.08,density:0.0018,label:'slime_'+(lv+1),plugin:{createdAt:Date.now()},render:{fillStyle:nx.c,strokeStyle:'rgba(0,0,0,0.25)',lineWidth:1}});Composite.add(world,baby);var g=Math.round(nx.s*cm);score+=g;document.getElementById('score').innerText=score;}});
+Events.on(engine,'collisionStart',function(ev){var pairs=ev.pairs,merged={};for(var i=0;i<pairs.length;i++){var p=pairs[i],a=p.bodyA.label,b=p.bodyB.label;if(!a||!b)continue;if(a.indexOf('slime_')!==0||b.indexOf('slime_')!==0)continue;if(merged[p.bodyA.id]||merged[p.bodyB.id])continue;if(a!==b)continue;var now=Date.now();if(now-lastMerge<1800)combo++;else combo=1;lastMerge=now;var lv=parseInt(a.split('_')[1],10);if(combo>=5){var cx2=(p.bodyA.position.x+p.bodyB.position.x)/2,cy2=(p.bodyA.position.y+p.bodyB.position.y)/2;var n=bombNear(cx2,cy2);combo=0;cm=1;continue;}cm=Math.min(8,1+combo*0.5);if(lv>=types.length-1){var cx3=(p.bodyA.position.x+p.bodyB.position.x)/2,cy3=(p.bodyA.position.y+p.bodyB.position.y)/2;spawnFirework(cx3,cy3,'#ffd166',48);Composite.remove(world,[p.bodyA,p.bodyB]);merged[p.bodyA.id]=true;merged[p.bodyB.id]=true;var bonus=Math.round(types[lv].s*cm*3);score+=bonus;document.getElementById('score').innerText=score;checkStageClear();continue;}showCombo('COMBO x'+combo,'x'+cm.toFixed(1),subs[Math.min(combo-1,subs.length-1)],false);var nx=types[lv+1],px=(p.bodyA.position.x+p.bodyB.position.x)/2,py=(p.bodyA.position.y+p.bodyB.position.y)/2;spawnFirework(px,py,nx.c);Composite.remove(world,[p.bodyA,p.bodyB]);merged[p.bodyA.id]=true;merged[p.bodyB.id]=true;var baby=Bodies.circle(px,py,nx.r,{restitution:0.3,friction:0.08,density:0.0018,label:'slime_'+(lv+1),plugin:{createdAt:Date.now()},render:{fillStyle:nx.c,strokeStyle:'rgba(0,0,0,0.25)',lineWidth:1}});Composite.add(world,baby);var g=Math.round(nx.s*cm);score+=g;document.getElementById('score').innerText=score;checkStageClear();}});
 
 Events.on(engine,'afterUpdate',function(){if(gameOver)return;var topY=9999,all=Composite.allBodies(world);for(var i=0;i<all.length;i++){var b=all[i];if(b.isStatic)continue;var t=b.position.y-(b.circleRadius||10);if(t<topY)topY=t}var ratio=Math.max(0,Math.min(1,(topY-(H*0.1))/Math.max(10,H-60)));var r=Math.round(233+22*ratio),gg=Math.round(69+51*ratio),bl=Math.round(96+106*ratio);danger.render.fillStyle='rgb('+r+','+gg+','+bl+')';for(var j=0;j<all.length;j++){var bb=all[j];if(bb.isStatic)continue;var age=Date.now()-((bb.plugin&&bb.plugin.createdAt)?bb.plugin.createdAt:0);if(bb.position.y<50&&Math.abs(bb.velocity.y)<0.8&&age>1800){gameOver=true;gameMsg.innerText='遊戲結束！最終得分：'+score;if(score>best){best=score;localStorage.setItem('slimeBest',String(best));saveLb()}break}}});
 
@@ -174,10 +188,8 @@ document.getElementById('closeRules').addEventListener('click',function(){docume
 document.getElementById('restart').addEventListener('click',resetGame);
 document.getElementById('lbOpen').addEventListener('click',function(){renderLb();document.getElementById('lbModal').classList.add('open')});
 document.getElementById('closeLb').addEventListener('click',function(){document.getElementById('lbModal').classList.remove('open')});
-nextLv=pickNext();refreshNextDot();
+nextLv=pickNext();refreshNextDot();updateStage();
 })();
 </script>
 </body>
 </html>
-EOF
-echo "WROTE"

@@ -151,7 +151,7 @@ function dropAt(x){
     if(gameOver||lockDrop)return;lockDrop=true;setTimeout(function(){lockDrop=false},220);
     var t=types[nextLv];
     Composite.add(world,Bodies.circle(x,28,t.r,{restitution:0.25,friction:0.08,density:0.0018,label:'slime_'+nextLv,plugin:{createdAt:Date.now()},render:{fillStyle:t.c,strokeStyle:'rgba(0,0,0,0.25)',lineWidth:1}}));
-    nextLv=pickNext();refreshNextDot();gameMsg.innerText='Level：'+nextLv;
+    nextLv=pickNext();refreshNextDot();
 }
 function resetGame(){var all=Composite.allBodies(world);for(var i=0;i<all.length;i++)if(!all[i].isStatic)Composite.remove(world,all[i]);score=0;document.getElementById('score').innerText='0';combo=0;cm=1;gameOver=false;nextLv=pickNext();gameMsg.innerText='點擊畫布投放史萊姆';fwParts=[];}
 function getX(e){var r=canvas.getBoundingClientRect();var cx=(e.touches&&e.touches[0])?e.touches[0].clientX:(e.changedTouches&&e.changedTouches[0])?e.changedTouches[0].clientX:e.clientX;var x=((cx-r.left)/r.width)*W;return Math.max(20,Math.min(W-20,x))}
@@ -168,7 +168,7 @@ Events.on(engine,'afterUpdate',function(){if(gameOver)return;var topY=9999,all=C
 function lbKey(){return'slimeLb'}function readLb(){try{return JSON.parse(localStorage.getItem(lbKey())||'[]')}catch(e){return[]}}function writeLb(a){localStorage.setItem(lbKey(),JSON.stringify(a))}
 function saveLb(){var name2=(document.getElementById('playerName').value||'??').trim();if(!name2)return;var lb=readLb(),idx=-1;for(var i=0;i<lb.length;i++)if(lb[i].name===name2){idx=i;break}if(idx>=0){if(score>lb[idx].score)lb[idx].score=score}else{lb.push({name:name2,score:score})}lb.sort(function(a,b){return b.score-a.score});if(lb.length>10)lb=lb.slice(0,10);writeLb(lb)}
 function renderLb(){var lb=readLb(),ul=document.getElementById('lbList'),emp=document.getElementById('lbEmpty');ul.innerHTML='';if(!lb.length){emp.style.display='block';return}emp.style.display='none';lb.forEach(function(en,i){var li=document.createElement('li');li.innerHTML='<div class="rk">#'+(i+1)+'</div><div class="nm">'+en.name+'</div><div class="sc">'+en.score+'</div>';ul.appendChild(li)})}
-document.getElementById('startBtn').addEventListener('click',function(){var n=(document.getElementById('playerName').value||'').trim();if(!n){document.getElementById('playerName').style.borderColor='#e94560';return}document.getElementById('playerName').style.borderColor='rgba(255,255,255,0.25)';document.getElementById('startOverlay').style.display='none';nextLv=pickNext()});
+document.getElementById('startBtn').addEventListener('click',function(){try{var n=(document.getElementById('playerName').value||'').trim();if(!n){document.getElementById('playerName').style.borderColor='#e94560';return}document.getElementById('playerName').style.borderColor='rgba(255,255,255,0.25)';var ov=document.getElementById('startOverlay');ov.style.display='none';ov.style.visibility='hidden';ov.style.pointerEvents='none';nextLv=pickNext();resetGame();console.log('START_OK')}catch(e){console.error('START_FAIL',e);gameMsg.innerText='啟動失敗：'+e.message}});
 document.getElementById('rulesBtn').addEventListener('click',function(){document.getElementById('rulesModal').classList.add('open')});
 document.getElementById('closeRules').addEventListener('click',function(){document.getElementById('rulesModal').classList.remove('open')});
 document.getElementById('restart').addEventListener('click',resetGame);

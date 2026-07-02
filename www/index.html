@@ -34,8 +34,6 @@
             overflow: hidden;
             height: 100%;
             width: 100%;
-            touch-action: none;
-            -webkit-overflow-scrolling: none;
             position: fixed;
             top: 0;
             left: 0;
@@ -43,108 +41,106 @@
             bottom: 0;
         }
 
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            padding-top: calc(16px + var(--safe-top));
-            padding-bottom: var(--safe-bottom);
-            padding-left: var(--safe-left);
-            padding-right: var(--safe-right));
-        }
-
         #gameContainer {
             position: relative;
             width: 100%;
             max-width: 420px;
+            height: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 12px;
+            margin: 0 auto;
+            padding: calc(16px + var(--safe-top)) var(--safe-left) var(--safe-bottom) var(--safe-right);
         }
 
         #header {
             width: 100%;
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            padding: 0 8px;
+            align-items: stretch;
             gap: 10px;
+            flex-shrink: 0;
         }
 
         .header-card {
             flex: 1;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-radius: 16px;
-            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 18px;
+            padding: 10px 8px;
             text-align: center;
             min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
 
         .header-label {
-            font-size: 11px;
+            font-size: 10px;
             text-transform: uppercase;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.1em;
             color: rgba(255, 255, 255, 0.7);
             margin-bottom: 2px;
         }
 
         .header-value {
-            font-size: 20px;
+            font-size: 22px;
             font-weight: 800;
             color: #fff;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
             white-space: nowrap;
         }
 
         #gameCanvas {
             background: linear-gradient(180deg, #16213e 0%, #0f3460 100%);
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            border-radius: 22px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.1);
             width: 100%;
             max-width: 400px;
-            height: auto;
-            aspect-ratio: 400 / 600;
+            flex: 1;
             max-height: 68vh;
+            touch-action: none;
         }
 
-        #nextInfo {
+        #bottomBar {
             width: 100%;
             max-width: 400px;
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border-radius: 14px;
-            padding: 10px 14px;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 10px;
+            flex-shrink: 0;
+            margin-top: 10px;
         }
 
-        .next-label {
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.7);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-        }
-
-        .next-slime {
+        .pill {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-radius: 14px;
+            padding: 8px 12px;
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
-        .slime-dot {
-            width: 26px;
-            height: 26px;
+        .pill-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.8);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .dot {
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
-            box-shadow: 0 0 14px currentColor;
+            box-shadow: 0 0 16px currentColor;
         }
 
         #msg {
@@ -152,37 +148,134 @@
             max-width: 400px;
             text-align: center;
             font-size: 13px;
-            line-height: 1.3;
-            color: rgba(255, 255, 255, 0.8);
-            padding: 0 4px;
+            line-height: 1.35;
+            color: rgba(255, 255, 255, 0.85);
+            padding: 4px 2px;
+            min-height: 18px;
+            flex-shrink: 0;
         }
 
-        #rules {
+        #startOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 15, 26, 0.85);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 24px;
+        }
+
+        #startCard {
+            background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04));
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 28px;
+            padding: 26px 22px;
             width: 100%;
-            max-width: 400px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 14px;
-            padding: 12px 14px;
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.7);
-            line-height: 1.5;
+            max-width: 360px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
         }
 
-        #rules summary {
+        #startCard h1 {
+            margin: 0 0 4px;
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: 0.02em;
+        }
+
+        #startCard h2 {
+            margin: 0 0 18px;
+            font-size: 13px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.7);
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 14px 0;
+            border-radius: 16px;
+            border: none;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            color: #fff;
+            background: linear-gradient(135deg, #e94560, #ff6b81);
+            box-shadow: 0 10px 30px rgba(233, 69, 96, 0.45);
+            margin-bottom: 10px;
             cursor: pointer;
-            font-weight: 700;
-            color: rgba(255, 255, 255, 0.9);
-            user-select: none;
         }
 
-        #rules ul {
-            margin: 8px 0 0 0;
+        .btn.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: none;
+        }
+
+        #rulesModal {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 15, 26, 0.8);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            padding: 24px;
+        }
+
+        #rulesModal.open {
+            display: flex;
+        }
+
+        #rulesCard {
+            background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 24px;
+            padding: 22px 20px;
+            width: 100%;
+            max-width: 360px;
+            box-shadow: 0 18px 50px rgba(0,0,0,0.6);
+        }
+
+        #rulesCard h3 {
+            margin: 0 0 12px;
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        #rulesCard ul {
+            margin: 0;
             padding-left: 18px;
+            color: rgba(255,255,255,0.85);
+            font-size: 14px;
+            line-height: 1.6;
         }
 
-        #rules li {
-            margin-bottom: 4px;
+        #rulesCard li {
+            margin-bottom: 6px;
+        }
+
+        .closeBtn {
+            margin-top: 14px;
+            width: 100%;
+            padding: 12px 0;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
         }
     </style>
     <script src="matter.min.js"></script>
@@ -196,9 +289,7 @@
             </div>
             <div class="header-card">
                 <div class="header-label">下一隻</div>
-                <div class="next-slime">
-                    <div class="slime-dot" id="nextDot"></div>
-                </div>
+                <div class="dot" id="nextDot"></div>
             </div>
             <div class="header-card">
                 <div class="header-label">最高分</div>
@@ -208,29 +299,46 @@
 
         <canvas id="gameCanvas" width="400" height="600"></canvas>
 
-        <div id="nextInfo">
-            <div class="next-label">遊戲規則</div>
-            <div class="next-slime">
-                <div class="slime-dot" id="ruleDot"></div>
+        <div id="bottomBar">
+            <div class="pill">
+                <div class="pill-label">遊戲規則</div>
+                <div class="dot" id="ruleDot"></div>
+            </div>
+            <div class="pill" id="restart" style="cursor:pointer">
+                <div class="pill-label">重新開始</div>
             </div>
         </div>
 
-        <div id="msg">點擊或拖曳畫面釋放史萊姆，相同顏色+等級會進化！</div>
+        <div id="msg">按住畫布水平拖曳，鬆開投放史萊姆。</div>
+    </div>
 
-        <details id="rules">
-            <summary>遊戲規則</summary>
+    <div id="startOverlay">
+        <div id="startCard">
+            <h1>SlimePop</h1>
+            <h2>史萊姆進化大爆發</h2>
+            <button class="btn" id="startBtn">Game Start</button>
+            <button class="btn secondary" id="rulesBtn">遊戲規則</button>
+        </div>
+    </div>
+
+    <div id="rulesModal">
+        <div id="rulesCard">
+            <h3>遊戲規則</h3>
             <ul>
-                <li>點擊畫面投放史萊姆，相同等級與顏色碰撞會進化。</li>
+                <li>按住畫面水平移動調整位置，鬆開投放史萊姆。</li>
+                <li>相同等級與顏色碰撞會進化成更高等級。</li>
                 <li>每次進化都可賺取積分，等級愈高分數愈高。</li>
-                <li>尽量避免堆到頂部红线，超过即game over。</li>
-                <li>盡量合成高等级史莱姆，挑戰最高分！</li>
+                <li>尽量避免堆到頂部紅线，超過紅线即 Game Over。</li>
+                <li>下一隻史萊姆會預覽，左上角最高分會記住。</li>
+                <li>隨時可按「重新開始」重置遊戲。</li>
             </ul>
-        </details>
+            <button class="closeBtn" id="closeRules">關閉</button>
+        </div>
     </div>
 
     <script>
         try {
-            const { Engine, Render, Runner, Bodies, Composite, Body, Events, Mouse, MouseConstraint } = Matter;
+            const { Engine, Render, Runner, Bodies, Composite, Events } = Matter;
 
             const engine = Engine.create();
             const world = engine.world;
@@ -278,14 +386,16 @@
             const rightWall = Bodies.rectangle(410, 300, 24, 600, wallOptions);
             Composite.add(world, [ground, leftWall, rightWall]);
 
-            const dangerZone = Bodies.rectangle(200, 80, 400, 6, {
+            const dangerLine = Bodies.rectangle(200, 74, 400, 4, {
                 isStatic: true,
                 isSensor: true,
-                render: { visible: false }
+                render: { visible: true, fillStyle: '#e94560' }
             });
-            Composite.add(world, dangerZone);
+            Composite.add(world, dangerLine);
 
             let gameOver = false;
+            let nextLv = 0;
+            let pendingX = 200;
 
             function getEventX(e) {
                 const rect = canvas.getBoundingClientRect();
@@ -304,9 +414,7 @@
                 return lv;
             }
 
-            let nextLv = pickNext();
-
-            function dropSlime(x) {
+            function dropAt(x) {
                 if (gameOver) return;
                 const type = slimeTypes[nextLv];
                 const slime = Bodies.circle(x, 40, type.radius, {
@@ -324,19 +432,43 @@
                 nextLv = pickNext();
             }
 
+            function resetGame() {
+                const bodies = Composite.allBodies(world);
+                for (const body of bodies) {
+                    if (!body.isStatic) {
+                        Composite.remove(world, body);
+                    }
+                }
+                score = 0;
+                scoreEl.innerText = '0';
+                gameOver = false;
+                nextLv = pickNext();
+                msgEl.innerText = '按住畫布水平拖曳，鬆開投放史萊姆。';
+            }
+
             canvas.addEventListener('mousedown', (e) => {
                 e.preventDefault();
-                dropSlime(getEventX(e));
+                pendingX = getEventX(e);
+            });
+            canvas.addEventListener('mousemove', (e) => {
+                if (e.buttons === 1) pendingX = getEventX(e);
+            });
+            canvas.addEventListener('mouseup', () => {
+                dropAt(pendingX);
             });
 
             canvas.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                dropSlime(getEventX(e));
+                pendingX = getEventX(e);
             }, { passive: false });
-
             canvas.addEventListener('touchmove', (e) => {
                 e.preventDefault();
+                pendingX = getEventX(e);
             }, { passive: false });
+            canvas.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                dropAt(pendingX);
+            });
 
             Events.on(engine, 'collisionStart', function(event) {
                 const pairs = event.pairs;
@@ -345,7 +477,6 @@
                 pairs.forEach(pair => {
                     const labelA = pair.bodyA.label;
                     const labelB = pair.bodyB.label;
-
                     if (!labelA || !labelB) return;
                     if (!labelA.startsWith('slime_') || !labelB.startsWith('slime_')) return;
                     if (merged.has(pair.bodyA.id) || merged.has(pair.bodyB.id)) return;
@@ -385,7 +516,7 @@
                 const allBodies = Composite.allBodies(world);
                 for (const body of allBodies) {
                     if (body.isStatic) continue;
-                    if (body.position.y < 60 && Math.abs(body.velocity.y) < 0.5) {
+                    if (body.position.y < 60 && Math.abs(body.velocity.y) < 0.8) {
                         gameOver = true;
                         msgEl.innerText = '遊戲結束！最終得分：' + score;
                         if (score > best) {
@@ -397,6 +528,25 @@
                     }
                 }
             });
+
+            document.getElementById('startBtn').addEventListener('click', () => {
+                document.getElementById('startOverlay').style.display = 'none';
+                pickNext();
+            });
+
+            document.getElementById('rulesBtn').addEventListener('click', () => {
+                document.getElementById('rulesModal').classList.add('open');
+            });
+
+            document.getElementById('closeRules').addEventListener('click', () => {
+                document.getElementById('rulesModal').classList.remove('open');
+            });
+
+            document.getElementById('restart').addEventListener('click', () => {
+                resetGame();
+            });
+
+            nextLv = pickNext();
 
             if (window.StatusBar && typeof window.StatusBar.hide === 'function') {
                 setTimeout(() => {

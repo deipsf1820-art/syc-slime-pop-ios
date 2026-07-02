@@ -454,7 +454,7 @@
                     if (gameOver) return;
                     if (lockDrop) return;
                     lockDrop = true;
-                    setTimeout(function() { lockDrop = false; }, 200);
+                    setTimeout(function() { lockDrop = false; }, 220);
 
                     var type = slimeTypes[nextLv];
                     var slime = Bodies.circle(x, 40, type.radius, {
@@ -462,6 +462,7 @@
                         friction: 0.08,
                         density: 0.0018,
                         label: 'slime_' + nextLv,
+                        plugin: { createdAt: Date.now() },
                         render: {
                             fillStyle: type.color,
                             strokeStyle: 'rgba(0,0,0,0.25)',
@@ -470,7 +471,7 @@
                     });
                     Composite.add(world, slime);
                     nextLv = pickNext();
-                    msgEl.innerText = '投放！位置：' + Math.round(x) + ' 下一隻：' + nextLv;
+                    msgEl.innerText = '投放！下一隻：' + nextLv;
                 }
 
                 function resetGame() {
@@ -497,7 +498,6 @@
                     return Math.max(36, Math.min(364, x));
                 }
 
-                // Use transparent overlay on top of canvas to capture all input
                 touchLayer.addEventListener('touchstart', function(e) {
                     e.preventDefault();
                     if (e.touches.length === 1) {
@@ -509,7 +509,6 @@
                     // handled in touchstart
                 });
 
-                // Fallback mouse for desktop testing
                 touchLayer.addEventListener('mousedown', function(e) {
                     e.preventDefault();
                     dropAt(getXFromEvent(e));
@@ -543,6 +542,7 @@
                             friction: 0.08,
                             density: 0.0018,
                             label: 'slime_' + (currentLv + 1),
+                            plugin: { createdAt: Date.now() },
                             render: {
                                 fillStyle: nextType.color,
                                 strokeStyle: 'rgba(0,0,0,0.25)',
@@ -556,13 +556,16 @@
                     }
                 });
 
+                var GROW_MS = 1800;
+
                 Events.on(engine, 'afterUpdate', function() {
                     if (gameOver) return;
                     var allBodies = Composite.allBodies(world);
                     for (var i = 0; i < allBodies.length; i++) {
                         var body = allBodies[i];
                         if (body.isStatic) continue;
-                        if (body.position.y < 60 && Math.abs(body.velocity.y) < 0.8) {
+                        var age = Date.now() - (body.plugin && body.plugin.createdAt ? body.plugin.createdAt : 0);
+                        if (body.position.y < 60 && Math.abs(body.velocity.y) < 0.8 && age > GROW_MS) {
                             gameOver = true;
                             msgEl.innerText = '遊戲結束！最終得分：' + score;
                             if (score > best) {

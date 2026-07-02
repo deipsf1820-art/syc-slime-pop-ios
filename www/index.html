@@ -210,10 +210,17 @@ function drawFireworks(){
 }
 setInterval(drawFireworks,16);
 
+function makeSpriteForType(t){
+    if(customImg[t.id]) return { texture: customImg[t.id], xScale: (t.r*2)/64, yScale: (t.r*2)/64 };
+    return null;
+}
 function dropAt(x){
     if(gameOver||lockDrop)return;lockDrop=true;setTimeout(function(){lockDrop=false},220);
-    var t=types[nextLv];
-    Composite.add(world,Bodies.circle(x,40,t.r,{restitution:0.25,friction:0.08,density:0.0018,label:'slime_'+nextLv,plugin:{createdAt:Date.now()},render:{fillStyle:t.c,strokeStyle:'rgba(0,0,0,0.25)',lineWidth:1}}));
+    var t=types[nextLv], sprite=makeSpriteForType(t);
+    Composite.add(world,Bodies.circle(x,40,t.r,{
+        restitution:0.25,friction:0.08,density:0.0018,label:'slime_'+nextLv,plugin:{createdAt:Date.now()},
+        render: sprite ? { sprite:sprite } : { fillStyle:t.c, strokeStyle:'rgba(0,0,0,0.25)', lineWidth:1 }
+    }));
     nextLv=pickNext();msgEl.innerText='下一個：'+nextLv;
 }
 function resetGame(){
@@ -257,9 +264,9 @@ Events.on(engine,'collisionStart',function(ev){
         }
         showCombo('COMBO x'+combo,'x'+cm.toFixed(1),subs[Math.min(combo-1,subs.length-1)],false);
         var nx=types[lv+1],px=(p.bodyA.position.x+p.bodyB.position.x)/2,py=(p.bodyA.position.y+p.bodyB.position.y)/2;
-        spawnFirework(px,py,nx.c);
+        var nxSprite=makeSpriteForType(nx), nxRender=nxSprite?{sprite:nxSprite}:{fillStyle:nx.c,strokeStyle:'rgba(0,0,0,0.25)',lineWidth:1};
         Composite.remove(world,[p.bodyA,p.bodyB]);merged[p.bodyA.id]=true;merged[p.bodyB.id]=true;
-        var baby=Bodies.circle(px,py,nx.r,{restitution:0.3,friction:0.08,density:0.0018,label:'slime_'+(lv+1),plugin:{createdAt:Date.now()},render:{fillStyle:nx.c,strokeStyle:'rgba(0,0,0,0.25)',lineWidth:1}});
+        var baby=Bodies.circle(px,py,nx.r,{restitution:0.3,friction:0.08,density:0.0018,label:'slime_'+(lv+1),plugin:{createdAt:Date.now()},render:nxRender});
         Composite.add(world,baby);
         var g=Math.round(nx.s*cm);score+=g;scoreEl.innerText=score;flash('+'+g,'#ffd166');
     }

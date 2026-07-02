@@ -94,15 +94,30 @@
             white-space: nowrap;
         }
 
-        #gameCanvas {
-            background: linear-gradient(180deg, #16213e 0%, #0f3460 100%);
-            border-radius: 22px;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        #canvasWrap {
+            position: relative;
             width: 100%;
             max-width: 400px;
             flex: 1;
             max-height: 68vh;
+            border-radius: 22px;
+            overflow: hidden;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.55);
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, #16213e 0%, #0f3460 100%);
+            border-radius: 22px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        #touchLayer {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
             touch-action: none;
         }
 
@@ -297,7 +312,10 @@
             </div>
         </div>
 
-        <canvas id="gameCanvas" width="400" height="600"></canvas>
+        <div id="canvasWrap">
+            <canvas id="gameCanvas" width="400" height="600"></canvas>
+            <div id="touchLayer"></div>
+        </div>
 
         <div id="bottomBar">
             <div class="pill" id="rulesPill">
@@ -309,7 +327,7 @@
             </div>
         </div>
 
-        <div id="msg">按住畫布水平拖曳，鬆開投放史萊姆。</div>
+        <div id="msg">點擊畫面投放史萊姆。</div>
     </div>
 
     <div id="startOverlay">
@@ -325,7 +343,7 @@
         <div id="rulesCard">
             <h3>遊戲規則</h3>
             <ul>
-                <li>按住畫面水平移動調整位置，鬆開投放史萊姆。</li>
+                <li>點擊或輕觸畫布投放史萊姆。</li>
                 <li>相同等級與顏色碰撞會進化成更高等級。</li>
                 <li>每次進化都可賺取積分，等級愈高分數愈高。</li>
                 <li>盡量避免堆到頂部紅線，超過紅線即 Game Over。</li>
@@ -340,12 +358,14 @@
         window.onerror = function(msg, url, line) {
             var el = document.getElementById('msg');
             if (el) el.innerText = '錯誤：' + msg + ' (行 ' + line + ')';
+            console.error('ERROR', msg, url, line);
             return true;
         };
 
         window.addEventListener('unhandledrejection', function(e) {
             var el = document.getElementById('msg');
             if (el) el.innerText = '未處理錯誤：' + (e.reason && e.reason.message ? e.reason.message : String(e.reason));
+            console.error('UNHANDLED', e.reason);
         });
 
         try {
@@ -361,6 +381,7 @@
                     Events = Matter.Events;
 
                 var canvas = document.getElementById('gameCanvas');
+                var touchLayer = document.getElementById('touchLayer');
                 var scoreEl = document.getElementById('score');
                 var bestEl = document.getElementById('best');
                 var nextDot = document.getElementById('nextDot');
@@ -417,18 +438,7 @@
 
                 var gameOver = false;
                 var nextLv = 0;
-                var pendingX = 200;
                 var lockDrop = false;
-
-                function getEventX(e) {
-                    var rect = canvas.getBoundingClientRect();
-                    var cx = 0;
-                    if (e.touches && e.touches.length > 0) cx = e.touches[0].clientX;
-                    else if (e.changedTouches && e.changedTouches.length > 0) cx = e.changedTouches[0].clientX;
-                    else cx = e.clientX;
-                    var x = ((cx - rect.left) / rect.width) * 400;
-                    return Math.max(36, Math.min(364, x));
-                }
 
                 function pickNext() {
                     var lv = Math.floor(Math.random() * 3);
@@ -444,7 +454,7 @@
                     if (gameOver) return;
                     if (lockDrop) return;
                     lockDrop = true;
-                    setTimeout(function() { lockDrop = false; }, 150);
+                    setTimeout(function() { lockDrop = false; }, 200);
 
                     var type = slimeTypes[nextLv];
                     var slime = Bodies.circle(x, 40, type.radius, {
@@ -460,6 +470,7 @@
                     });
                     Composite.add(world, slime);
                     nextLv = pickNext();
+                    msgEl.innerText = '投放！位置：' + Math.round(x) + ' 下一隻：' + nextLv;
                 }
 
                 function resetGame() {
@@ -473,43 +484,36 @@
                     scoreEl.innerText = '0';
                     gameOver = false;
                     nextLv = pickNext();
-                    msgEl.innerText = '按住畫布水平拖曳，鬆開投放史萊姆。';
+                    msgEl.innerText = '點擊畫面投放史萊姆。';
                 }
 
-                var pointerDown = false;
+                function getXFromEvent(e) {
+                    var rect = canvas.getBoundingClientRect();
+                    var cx = 0;
+                    if (e.touches && e.touches.length > 0) cx = e.touches[0].clientX;
+                    else if (e.changedTouches && e.changedTouches.length > 0) cx = e.changedTouches[0].clientX;
+                    else cx = e.clientX;
+                    var x = ((cx - rect.left) / rect.width) * 400;
+                    return Math.max(36, Math.min(364, x));
+                }
 
-                canvas.addEventListener('pointerdown', function(e) {
+                // Use transparent overlay on top of canvas to capture all input
+                touchLayer.addEventListener('touchstart', function(e) {
                     e.preventDefault();
-                    pointerDown = true;
-                    pendingX = getEventX(e);
+                    if (e.touches.length === 1) {
+                        dropAt(getXFromEvent(e));
+                    }
+                }, { passive: false });
+
+                touchLayer.addEventListener('touchend', function(e) {
+                    // handled in touchstart
                 });
 
-                canvas.addEventListener('pointermove', function(e) {
-                    if (!pointerDown) return;
-                    pendingX = getEventX(e);
-                });
-
-                canvas.addEventListener('pointerup', function(e) {
+                // Fallback mouse for desktop testing
+                touchLayer.addEventListener('mousedown', function(e) {
                     e.preventDefault();
-                    if (pointerDown) {
-                        pointerDown = false;
-                        dropAt(pendingX);
-                    }
+                    dropAt(getXFromEvent(e));
                 });
-
-                canvas.addEventListener('pointercancel', function(e) {
-                    pointerDown = false;
-                });
-
-                canvas.addEventListener('pointerleave', function(e) {
-                    if (pointerDown) {
-                        pointerDown = false;
-                        dropAt(pendingX);
-                    }
-                });
-
-                canvas.addEventListener('touchstart', function(e) { e.preventDefault(); }, { passive: false });
-                canvas.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
 
                 Events.on(engine, 'collisionStart', function(event) {
                     var pairs = event.pairs;

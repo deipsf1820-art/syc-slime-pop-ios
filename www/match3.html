@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0a2e">
+<title>色彩配對 Color Match</title>
+<style>
+*{-webkit-tap-highlight-color:transparent;user-select:none;box-sizing:border-box}
+html,body{margin:0;padding:0;background:#0a0a2e;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,sans-serif;overflow:hidden;height:100%;width:100%;position:fixed;inset:0}
+#app{position:relative;width:100%;height:100%;display:flex;flex-direction:column;align-items:stretch;margin:0 auto;max-width:500px;background:linear-gradient(180deg,#1a1a5c,#0a0a2e 60%,#05051a)}
+#hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:12px 16px;z-index:10;pointer-events:none}
+.hcard{background:linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04));border:1px solid rgba(255,255,255,0.14);border-radius:14px;padding:8px 14px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.hlabel{font-size:9px;letter-spacing:0.12em;color:rgba(255,255,255,0.65);font-weight:800}
+.hvalue{font-size:20px;font-weight:900;background:linear-gradient(135deg,#fff,#ffd166);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1}
+#wrap{flex:1;position:relative;overflow:hidden;touch-action:none}
+canvas{display:block;width:100%;height:100%}
+#startOv{position:fixed;inset:0;z-index:100;background:rgba(10,10,46,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .4s ease-out}
+.card{background:linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.06));border:1px solid rgba(255,255,255,0.22);border-radius:24px;padding:28px 24px;width:100%;max-width:340px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,0.8);animation:popIn .5s cubic-bezier(.175,.885,.32,1.275)}
+.card h1{margin:0 0 6px;font-size:34px;font-weight:900;background:linear-gradient(135deg,#fff,#ffd166);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 8px 20px rgba(255,209,102,0.35))}
+.card h2{margin:0 0 20px;font-size:11px;font-weight:800;color:rgba(255,255,255,0.7);letter-spacing:0.2em;text-transform:uppercase}
+.inp{width:100%;padding:13px 14px;border-radius:14px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);color:#fff;font-size:16px;font-weight:700;margin-bottom:14px;outline:none;transition:border-color .2s,transform .1s}
+.inp::placeholder{color:rgba(255,255,255,0.35);font-weight:600}
+.inp:focus{border-color:#ffd166;transform:scale(1.02)}
+.btn{display:inline-flex;align-items:center;justify-content:center;width:100%;padding:14px 0;border-radius:14px;border:none;font-size:15px;font-weight:900;letter-spacing:0.1em;color:#fff;margin-bottom:10px;cursor:pointer;background:linear-gradient(135deg,#e94560,#ff6b81);box-shadow:0 14px 32px rgba(233,69,96,0.5);transition:transform .1s}
+.btn:active{transform:scale(0.97)}
+.btn.g{background:linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0.05));border:1px solid rgba(255,255,255,0.2);box-shadow:none}
+.tip{margin-top:12px;font-size:11px;color:rgba(255,255,255,0.6);line-height:1.7}
+.hidden{display:none!important}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes popIn{from{opacity:0;transform:scale(0.92)}to{opacity:1;transform:scale(1)}
+@keyframes bounceIn{0%{transform:scale(0.3);opacity:0}50%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+@keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.4)}100%{transform:scale(0)}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud" class="hidden">
+    <div class="hcard"><div class="hlabel">得分</div><div class="hvalue" id="score">0</div></div>
+    <div class="hcard"><div class="hlabel">步數</div><div class="hvalue" id="moves">0</div></div>
+    <div class="hcard"><div class="hlabel">目標</div><div class="hvalue" id="target">500</div></div>
+  </div>
+  <div id="wrap">
+    <canvas id="c"></canvas>
+  </div>
+  <div id="startOv">
+    <div class="card">
+      <h1>色彩配對</h1>
+      <h2>COLOR MATCH</h2>
+      <input type="text" id="name" class="inp" placeholder="玩家名稱" maxlength="10" value="玩家">
+      <button class="btn" id="go">開始遊戲</button>
+      <button class="btn g" id="helpBtn">📖 操作說明</button>
+      <p class="tip">滑動交換相鄰方塊<br>3 個或以上相同顏色連成一线即可消除<br>目标：Limited steps 內達到目標分數</p>
+    </div>
+  </div>
+  <div id="overOv" class="hidden" style="position:fixed;inset:0;z-index:200;background:rgba(10,10,46,0.9);display:none;align-items:center;justify-content:center;padding:20px">
+    <div class="card">
+      <h1 id="overTitle">GAME OVER</h1>
+      <p id="overText" style="margin:12px 0;color:rgba(255,255,255,0.88);font-size:14px;line-height:1.7"></p>
+      <button class="btn" id="retry">再玩一次</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W=0, H=0;
+
+// Game config
+const COLS=8, ROWS=8;
+const TARGET=500;
+const MAX_MOVES=20;
+const COLORS = [
+  {name:'紅', hex:'#ff4757', light:'#ff6b7a'},
+  {name:'藍', hex:'#3742fa', light:'#5a5fff'},
+  {name:'綠', hex:'#2ed573', light:'#5ae992'},
+  {name:'黃', hex:'#ffa502', light:'#ffb833'},
+  {name:'紫', hex:'#a55eea', light:'#bb7ff0'},
+  {name:'橙', hex:'#ff7f50', light:'#ff9980'}
+];
+
+// State
+let board=[], animating=[], particles=[];
+let score=0, movesLeft=MAX_MOVES, best=0, level=1;
+let running=false, over=false;
+let selected=null;
+let touchStart=null;
+let swipeThreshold=25;
+
+try{best=parseInt(localStorage.getItem('match3_b')||'0',10)}catch(e){}
+
+// ===== RESIZE =====
+function resize(){
+  const wrap=document.getElementById('wrap');
+  const rect=wrap.getBoundingClientRect();
+  W=Math.floor(rect.width);H=Math.floor(rect.height);
+  if(W<100)W=320;if(H<100)H=300;
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  canvas.width=W*dpr;canvas.height=H*dpr;
+  canvas.style.width=W+'px';canvas.style.height=H+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener('resize',resize);
+
+// ===== BOARD =====
+function createBoard(){
+  board=[];
+  for(let r=0;r<ROWS;r++){
+    board[r]=[];
+    for(let c=0;c<COLS;c++){
+      board[r][c]=Math.floor(Math.random()*COLORS.length);
+    }
+  }
+  // Remove initial matches
+  while(findMatches().length>0){
+    for(const [r,c] of findMatches()){
+      board[r][c]=Math.floor(Math.random()*COLORS.length);
+    }
+  }
+}
+
+function getCell(r,c){
+  if(r<0||r>=ROWS||c<0||c>=COLS) return null;
+  return board[r][c];
+}
+
+// ===== MATCH DETECTION =====
+function findMatches(){
+  const matched=new Set();
+  
+  // Horizontal
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS-2;c++){
+      const col=board[r][c];
+      if(col!==null && board[r][c+1]===col && board[r][c+2]===col){
+        matched.add(r+','+c);
+        matched.add(r+','+(c+1));
+        matched.add(r+','+(c+2));
+      }
+    }
+  }
+  
+  // Vertical
+  for(let r=0;r<ROWS-2;r++){
+    for(let c=0;c<COLS;c++){
+      const col=board[r][c];
+      if(col!==null && board[r+1][c]===col && board[r+2][c]===col){
+        matched.add(r+','+c);
+        matched.add((r+1)+','+c);
+        matched.add((r+2)+','+c);
+      }
+    }
+  }
+  
+  return Array.from(matched).map(s=>{const p=s.split(',');return[parseInt(p[0]),parseInt(p[1])]});
+}
+
+function hasMatches(){
+  return findMatches().length>0;
+}
+
+// ===== SWAP & RESOLVE =====
+function swap(r1,c1,r2,c2){
+  const tmp=board[r1][c1];
+  board[r1][c1]=board[r2][c2];
+  board[r2][c2]=tmp;
+  
+  const matches=findMatches();
+  if(matches.length>0){
+    // Valid move
+    resolveMatches();
+    return true;
+  } else {
+    // Invalid - swap back
+    board[r2][c2]=board[r1][c1];
+    board[r1][c1]=tmp;
+    return false;
+  }
+}
+
+function resolveMatches(){
+  let matches=findMatches();
+  if(matches.length===0) return;
+  
+  let combo=0;
+  const cascade=[];
+  
+  while(matches.length>0){
+    combo++;
+    
+    // Score calculation
+    let base=matches.length*10;
+    let comboBonus=combo>1?combo*15:0;
+    score+=base+comboBonus;
+    document.getElementById('score').textContent=score;
+    
+    // Mark matched cells for animation
+    for(const [r,c] of matches){
+      animating.push({r,c,t:0,maxT:20,color:board[r][c],type:'pop'});
+      addParticles(r,c,COLORS[board[r][c]].hex,6);
+    }
+    
+    // Remove matched
+    for(const [r,c] of matches){
+      board[r][c]=null;
+    }
+    
+    // Drop existing tiles down
+    for(let c=0;c<COLS;c++){
+      let empty=ROWS-1;
+      for(let r=ROWS-1;r>=0;r--){
+        if(board[r][c]!==null){
+          if(r!==empty){
+            board[empty][c]=board[r][c];
+            board[r][c]=null;
+            // Animate drop
+            animating.push({r:empty,c,tr:empty,cr:empty,t:0,maxT:10,fromR:r,type:'drop'});
+          }
+          empty--;
+        }
+      }
+      // Fill top with random
+      for(let r=empty;r>=0;r--){
+        board[r][c]=Math.floor(Math.random()*COLORS.length);
+        animating.push({r,c,t:0,maxT:15,type:'enter'});
+      }
+    }
+    
+    // Check for chain reactions
+    setTimeout(()=>{
+      matches=findMatches();
+      if(matches.length>0){
+        cascade.push({callback:()=>resolveMatches(),delay:200});
+      }
+    },50);
+  }
+  
+  // Check win/lose
+  setTimeout(()=>{
+    checkStatus();
+  },300);
+}
+
+function checkStatus(){
+  if(score>=TARGET){
+    // Level complete
+    level++;
+    document.getElementById('target').textContent=TARGET*level;
+    document.getElementById('overTitle').textContent='关卡完成！';
+    document.getElementById('overText').textContent=`得分：${score}\n步数剩余：${movesLeft}\n下一关目标：${TARGET*level}`;
+    document.getElementById('overOv').classList.remove('hidden');
+    document.getElementById('overOv').style.display='flex';
+    over=true;
+    running=false;
+    // Save best
+    if(score>best){best=score;try{localStorage.setItem('match3_b',best)}catch(e){}}
+  } else if(movesLeft<=0){
+    // Game over
+    document.getElementById('overTitle').textContent='GAME OVER';
+    document.getElementById('overText').textContent=`得分：${score}\n目標：${TARGET*level}\n差距：${TARGET*level-score}`;
+    document.getElementById('overOv').classList.remove('hidden');
+    document.getElementById('overOv').style.display='flex';
+    over=true;
+    running=false;
+    if(score>best){best=score;try{localStorage.setItem('match3_b',best)}catch(e){}}
+  }
+}
+
+// ===== PARTICLES =====
+function addParticles(r,c,color,count){
+  const cellSize=getCellSize();
+  const x=gridX+c*cellSize+cellSize/2;
+  const y=gridY+r*cellSize+cellSize/2;
+  for(let i=0;i<count;i++){
+    particles.push({
+      x,y,
+      vx:(Math.random()-0.5)*8,
+      vy:(Math.random()-0.5)*8-2,
+      life:1,
+      color,
+      size:2+Math.random()*3
+    });
+  }
+}
+
+// ===== INPUT =====
+function getGridPos(x,y){
+  const cellSize=getCellSize();
+  const c=Math.floor((x-gridX)/cellSize);
+  const r=Math.floor((y-gridY)/cellSize);
+  if(r>=0&&r<ROWS&&c>=0&&c<COLS) return {r,c};
+  return null;
+}
+
+function handleStart(x,y){
+  if(!running||over) return;
+  const pos=getGridPos(x,y);
+  if(!pos) return;
+  touchStart=pos;
+}
+
+function handleMove(x,y){
+  if(!touchStart||!running||over) return;
+  const pos=getGridPos(x,y);
+  if(!pos) return;
+  
+  const dr=pos.r-touchStart.r;
+  const dc=pos.c-touchStart.c;
+  
+  if(Math.abs(dr)+Math.abs(dc)>=1){
+    const tr=touchStart.r+dr;
+    const tc=touchStart.c+dc;
+    if(tr>=0&&tr<ROWS&&tc>=0&&tc<COLS){
+      // Try swap
+      const success=swap(touchStart.r,touchStart.c,tr,tc);
+      if(success){
+        movesLeft--;
+        document.getElementById('moves').textContent=movesLeft;
+        checkStatus();
+      }
+    }
+    touchStart=null;
+  }
+}
+
+function handleEnd(){
+  touchStart=null;
+}
+
+canvas.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];const rect=canvas.getBoundingClientRect();handleStart(t.clientX-rect.left,t.clientY-rect.top)},{passive:false});
+canvas.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];const rect=canvas.getBoundingClientRect();handleMove(t.clientX-rect.left,t.clientY-rect.top)},{passive:false});
+canvas.addEventListener('touchend',handleEnd);
+
+// Mouse support (desktop testing)
+canvas.addEventListener('mousedown',e=>{const rect=canvas.getBoundingClientRect();handleStart(e.clientX-rect.left,e.clientY-rect.top)});
+canvas.addEventListener('mousemove',e=>{if(touchStart){const rect=canvas.getBoundingClientRect();handleMove(e.clientX-rect.left,e.clientY-rect.top)}});
+canvas.addEventListener('mouseup',handleEnd);
+
+// Start
+document.getElementById('go').addEventListener('click',()=>{
+  const n=document.getElementById('name').value.trim();
+  if(!n){document.getElementById('name').style.borderColor='#e94560';return}
+  document.getElementById('name').style.borderColor='rgba(255,255,255,0.25)';
+  document.getElementById('startOv').classList.add('hidden');
+  startGame();
+});
+
+document.getElementById('retry').addEventListener('click',()=>{
+  document.getElementById('overOv').classList.add('hidden');
+  document.getElementById('overOv').style.display='none';
+  startGame();
+});
+
+document.getElementById('helpBtn').addEventListener('click',()=>{
+  alert('操作說明\n• 滑動方塊交換\n• 3 個相同顏色連成一线消除\n• 消除越多，分數越高\n• Limited steps 達到目標分數');
+});
+
+// ===== GAME FLOW =====
+function startGame(){
+  resize();
+  createBoard();
+  score=0;
+  movesLeft=MAX_MOVES;
+  over=false;
+  running=true;
+  selected=null;
+  animating=[];
+  particles=[];
+  document.getElementById('score').textContent='0';
+  document.getElementById('moves').textContent=movesLeft;
+  document.getElementById('target').textContent=TARGET*level;
+  document.getElementById('hud').classList.remove('hidden');
+  document.getElementById('overOv').classList.add('hidden');
+  document.getElementById('overOv').style.display='none';
+  loop();
+}
+
+// ===== RENDERING =====
+function getCellSize(){
+  const maxW=(W-40)/COLS;
+  const maxH=(H-120)/ROWS;
+  return Math.max(24,Math.min(60,maxW,maxH));
+}
+
+let gridX=0, gridY=0;
+function calcGrid(){
+  const cellSize=getCellSize();
+  gridX=Math.floor((W-COLS*cellSize)/2);
+  gridY=Math.floor((H-ROWS*cellSize)/2)+40;
+}
+
+function drawBoard(){
+  calcGrid();
+  const cellSize=getCellSize();
+  
+  // Check for initial matches and resolve
+  if(running && !over && animating.length===0 && hasMatches()){
+    resolveMatches();
+  }
+  
+  // Background grid
+  ctx.fillStyle='rgba(255,255,255,0.03)';
+  ctx.fillRect(gridX-4,gridY-4,COLS*cellSize+8,ROWS*cellSize+8);
+  
+  // Draw cells
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const x=gridX+c*cellSize;
+      const y=gridY+r*cellSize;
+      const color=board[r][c];
+      
+      // Cell background
+      ctx.fillStyle='rgba(255,255,255,0.05)';
+      ctx.fillRect(x+1,y+1,cellSize-2,cellSize-2);
+      
+      if(color!==null){
+        const col=COLORS[color];
+        
+        // Check if this cell is animating
+        const anim=animating.find(a=>a.r===r&&a.c===c);
+        
+        let scale=1, alpha=1;
+        if(anim){
+          if(anim.type==='pop'){
+            scale=1-Math.abs(anim.t-anim.maxT/2)/(anim.maxT/2);
+            alpha=1-anim.t/anim.maxT;
+          }else if(anim.type==='drop'){
+            const progress=anim.t/anim.maxT;
+            const fromY=gridY+anim.fromR*cellSize;
+            const toY=gridY+r*cellSize;
+            const dy=toY-fromY;
+            y+=dy*(1-progress);
+          }else if(anim.type==='enter'){
+            scale=anim.t/anim.maxT;
+          }
+          anim.t++;
+          if(anim.t>anim.maxT) animating=animating.filter(a=>a!==anim);
+        }
+        
+        ctx.save();
+        ctx.globalAlpha=Math.max(0,alpha);
+        ctx.translate(x+cellSize/2,y+cellSize/2);
+        ctx.scale(scale,scale);
+        
+        // Gem shape
+        const pad=cellSize*0.12;
+        const size=cellSize/2-pad;
+        
+        // Gradient
+        const grad=ctx.createRadialGradient(-size*0.3,-size*0.3,0,0,0,size*1.2);
+        grad.addColorStop(0,col.light);
+        grad.addColorStop(1,col.hex);
+        ctx.fillStyle=grad;
+        
+        // Rounded square gem
+        const rad=size*0.25;
+        ctx.beginPath();
+        ctx.moveTo(-size+rad,-size);
+        ctx.lineTo(size-rad,-size);
+        ctx.quadraticCurveTo(size,-size,size,-size+rad);
+        ctx.lineTo(size,size-rad);
+        ctx.quadraticCurveTo(size,size,size-rad,size);
+        ctx.lineTo(-size+rad,size);
+        ctx.quadraticCurveTo(-size,size,-size,size-rad);
+        ctx.lineTo(-size,-size+rad);
+        ctx.quadraticCurveTo(-size,-size,-size+rad,-size);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Highlight
+        ctx.fillStyle='rgba(255,255,255,0.3)';
+        ctx.beginPath();
+        ctx.ellipse(-size*0.2,-size*0.2,size*0.35,size*0.25,Math.PI/4,0,Math.PI*2);
+        ctx.fill();
+        
+        ctx.restore();
+      }
+    }
+  }
+  
+  // Selection highlight
+  if(selected && running && !over){
+    const {r,c}=selected;
+    const x=gridX+c*cellSize;
+    const y=gridY+r*cellSize;
+    ctx.strokeStyle='rgba(255,255,255,0.9)';
+    ctx.lineWidth=3;
+    ctx.strokeRect(x+2,y+2,cellSize-4,cellSize-4);
+    ctx.shadowColor='rgba(255,255,255,0.6)';
+    ctx.shadowBlur=10;
+    ctx.strokeRect(x+2,y+2,cellSize-4,cellSize-4);
+    ctx.shadowBlur=0;
+  }
+  
+  // Particles
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.vx;
+    p.y+=p.vy;
+    p.vy+=0.3;
+    p.life-=0.03;
+    if(p.life<=0){
+      particles.splice(i,1);
+      continue;
+    }
+    ctx.globalAlpha=p.life;
+    ctx.fillStyle=p.color;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2);
+    ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+
+// ===== LOOP =====
+function loop(){
+  if(running||particles.length>0){
+    drawBoard();
+    requestAnimationFrame(loop);
+  }
+}
+
+// ===== INIT =====
+resize();
+drawBoard();
+</script>
+</body>
+</html>

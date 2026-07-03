@@ -340,9 +340,9 @@ function handleTap(ex,ey){
         if(d<(b.circleRadius||12)+6&&d<bestD){bestD=d;best=b}
     }
     if(!best)return;
-    var cells=findCluster(best);
-    if(cells.length<2)return;
     lockInput=true;
+    var cells=findCluster(best);
+    if(cells.length<2){lockInput=false;return}
     movesLeft--;document.getElementById('movesTxt').innerText=movesLeft;
 
     var base=cells.length*5;
@@ -359,9 +359,7 @@ function handleTap(ex,ey){
         removeBodies(cells);
     }
     document.getElementById('score').innerText=score;updateStage();
-    setTimeout(function(){gravity();maybeSpawnTop();checkStageClear();
-        setTimeout(function(){lockInput=false;checkGameOver()},350);
-    },220);
+    setTimeout(function(){gravity();maybeSpawnTop();checkStageClear();lockInput=false;checkGameOver()},80);
 }
 
 function bombAll(bx,by){

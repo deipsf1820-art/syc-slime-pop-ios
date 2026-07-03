@@ -195,6 +195,7 @@ var popTimer=null;
 
 function stageEmojiPool(){return EMOJI_POOLS[Math.min((stage-1)%EMOJI_POOLS.length,EMOJI_POOLS.length-1)]}
 function stageColorFor(i,n){var hue0=(stage*47+10)%360;return 'hsl('+((hue0+i*360/n)%360)+',78%,60%)'}
+function matchMinForStage(){if(stage<=4)return 2;if(stage<=11)return 3;return 4}
 function updateStage(){
     var idx=Math.min(stage-1,stageThresholds.length-1);
     document.getElementById('stageTxt').innerText=stage;
@@ -222,6 +223,7 @@ function initBoard(){
     gridCols=Math.max(5,Math.min(9,Math.floor((W-14)/cellW)));
     gridRows=Math.max(5,Math.min(10,Math.floor((H-130)/cellH)));
     boardY=10;
+    stageCleared=false;
     
     grid=[];boardBodies=[];
     for(var r=0;r<gridRows;r++){
@@ -321,6 +323,7 @@ function refreshBodies(){
 }
 
 function maybeSpawnTop(){
+    if(boardBodies.length>=gridCols*gridRows*0.92)return;
     for(var c=0;c<gridCols;c++){
         if(grid[0]&&!grid[0][c]){
             var eg=randomEmoji();var x=7+c*cellW+cellW/2,y=boardY-cellH/2;
@@ -391,17 +394,26 @@ function handleTap(ex,ey){
     if(gameOver||lockInput||paused)return;
     initAudio();
     
+    var wrap=document.getElementById('canvasWrap'),rect=wrap.getBoundingClientRect();
+    var tx=((ex-rect.left)/rect.width)*W, ty=((ey-rect.top)/rect.height)*H;
+    
     var best=null,bestD=Infinity;
-    for(var i=0;i<boardBodies.length;i++){
-        var b=boardBodies[i];if(b.isStatic||!b.plugin)continue;
-        var dx=b.position.x-ex,dy=b.position.y-ey,d=Math.sqrt(dx*dx+dy*dy);
-        if(d<(b.circleRadius||12)+8&&d<bestD){bestD=d;best=b}
+    for(var c=0;c<gridCols;c++){
+        for(var r=0;r<gridRows;r++){
+            var b=grid[r]?grid[r][c]:null;
+            if(!b||b.isStatic||!b.plugin)continue;
+            var dx=b.position.x-tx,dy=b.position.y-ty,d=Math.sqrt(dx*dx+dy*dy);
+            var snap=cellW*0.72;
+            if(d<snap&&d<bestD){bestD=d;best=b}
+        }
     }
     if(!best)return;
     
     var cells=findCluster(best);
-    if(cells.length<2){
-        sfxPop();return;
+    var need=matchMinForStage();
+    if(cells.length<need){
+        if(cells.length>=2)sfxPop();
+        return;
     }
     
     lockInput=true;
@@ -418,7 +430,7 @@ function handleTap(ex,ey){
         sfxBomb();
     }else{
         showCombo(cells.length);
-        if(cells.length>=3)sfxCombo();else sfxPop();
+        if(cells.length>=3)sfxCombo();else if(cells.length>=2)sfxPop();
         removeBodies(cells);
     }
     score+=Math.round(base*mult);
@@ -427,7 +439,7 @@ function handleTap(ex,ey){
     
     setTimeout(function(){
         gravity();maybeSpawnTop();checkStageClear();checkGameOver();checkOverflow();lockInput=false;
-    },800);
+    },380);
 }
 
 function showCombo(n){

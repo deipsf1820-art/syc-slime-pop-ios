@@ -104,9 +104,9 @@ html,body{margin:0;padding:0;background:#080a1f;color:#fff;font-family:-apple-sy
             <li>連鎖越多分數越高，1.8 秒內連續消除可累積 Combo，倍率最高 x8。</li>
             <li>消除後剩餘 emoji 會下落並自動補位。</li>
             <li>只要場上仍有可行移動，遊戲繼續。</li>
-            <li>Stage 越高，emoji 種類越多，顏色愈亂，愈難 Blow 大群組。</li>
+            <li>emoji 填滿屏幕頂部且冇可行移動時，Game Over。</li>
             <li>達到 Stage 目標分數即過關，繼續挑戰下一關。</li>
-            <li>冇可行移動時 Game Over。</li>
+            <li>Stage 越高，emoji 種類越多，顏色愈亂，愈難 Blow 大群組。</li>
         </ul>
         <button class="closeBtn" id="closeRules">關閉</button>
     </div>
@@ -144,7 +144,7 @@ Runner.run(Runner.create(),engine);
 
 function wall(x,y,w,h){return Bodies.rectangle(x,y,w,h,{isStatic:true,render:{fillStyle:'transparent'}})}
 Composite.add(world,[wall(W/2,H+12,W+40,24),wall(-12,H/2,24,H+40),wall(W+12,H/2,24,H+40)]);
-Composite.add(world,Bodies.rectangle(W/2,H-4,Math.max(W,400),5,{isStatic:true,isSensor:true,render:{visible:true,fillStyle:'rgba(255,64,112,0.35)'}}));
+Composite.add(world,Bodies.rectangle(W/2,18,Math.max(W,400),3,{isStatic:true,isSensor:true,render:{visible:true,fillStyle:'rgba(255,64,112,0.85)'}}));
 
 var EMOJI_POOLS=[
   ['😀','😎','🥳','🤩','😇'],
@@ -309,10 +309,24 @@ function hasPossibleMove(){
 }
 
 function checkGameOver(){
-    if(!hasPossibleMove()){
-        gameOver=true;
-        gameMsg.innerText='冇可行移動！Game Over！最終得分：'+score;
-        if(score>best){best=score;localStorage.setItem('slimeBest',String(best));saveLb()}
+    if(hasPossibleMove())return;
+    gameOver=true;
+    gameMsg.innerText='冇可行移動！Game Over！最終得分：'+score;
+    if(score>best){best=score;localStorage.setItem('slimeBest',String(best));saveLb()}
+}
+
+function checkOverflow(){
+    if(gameOver)return;
+    for(var i=0;i<boardBodies.length;i++){
+        var b=boardBodies[i];if(b.isStatic||!b.plugin)continue;
+        if((b.position.y-(b.circleRadius||12))<=22){
+            if(!hasPossibleMove()){
+                gameOver=true;
+                gameMsg.innerText='填滿屏幕！Game Over！最終得分：'+score;
+                if(score>best){best=score;localStorage.setItem('slimeBest',String(best));saveLb()}
+            }
+            return;
+        }
     }
 }
 
@@ -353,7 +367,7 @@ function handleTap(ex,ey){
     document.getElementById('score').innerText=score;
     updateStage();
     setTimeout(function(){
-        gravity();maybeSpawnTop();checkStageClear();checkGameOver();lockInput=false;
+        gravity();maybeSpawnTop();checkStageClear();checkGameOver();checkOverflow();lockInput=false;
     },1200);
 }
 

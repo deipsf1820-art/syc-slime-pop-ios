@@ -192,19 +192,37 @@ function optionsFor(e){
 function step(e){
   const opts=optionsFor(e);
   if(!opts.length) return false;
+  
+  // Try queued direction first (don't clear if unavailable)
   let pick=null;
-  if(e.next.x!==0||e.next.y!==0){
+  if((e.next.x!==0||e.next.y!==0)){
     pick=opts.find(o=>o.dx===e.next.x&&o.dy===e.next.y);
-    e.next={x:0,y:0};
+    if(pick){
+      e.next={x:0,y:0};
+      e.dir=pick;
+      e.x+=pick.dx;
+      e.y+=pick.dy;
+      return true;
+    }
+    // Queue not available yet, keep it
+    return false;
   }
-  if(!pick&&(e.dir.x!==0||e.dir.y!==0)){
+  
+  // Continue current direction if still valid
+  if((e.dir.x!==0||e.dir.y!==0)){
     pick=opts.find(o=>o.dx===e.dir.x&&o.dy===e.dir.y);
+    if(pick){
+      e.x+=pick.dx;
+      e.y+=pick.dy;
+      return true;
+    }
+    // Current direction blocked - stop (don't auto-pick)
+    e.dir={x:0,y:0};
+    return false;
   }
-  if(!pick) pick=opts[Math.floor(Math.random()*opts.length)];
-  e.dir=pick;
-  e.x+=pick.dx;
-  e.y+=pick.dy;
-  return true;
+  
+  // No direction set - wait for input
+  return false;
 }
 
 // ===== GAME LOGIC =====

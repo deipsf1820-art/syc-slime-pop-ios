@@ -601,6 +601,7 @@ function triggerGameOver(){
 }
 
 function resetGame(){
+    resize();
     if(gameMode==='tetris'){
         tetrisReset();
     }else if(gameMode==='maze'){
@@ -612,6 +613,7 @@ function resetGame(){
         document.getElementById('pauseOverlay').classList.remove('open');
         initMaze();resetPositions();
         gameOver=false;gameRunning=true;
+        tetrisRunning=false;
     }
     if(gameMode==='tetris'){
         document.getElementById('tetrisControls').style.display='flex';

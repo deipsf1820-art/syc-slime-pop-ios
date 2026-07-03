@@ -242,6 +242,8 @@ function initBoard(){
         }
     }
     gameOver=false;
+    lockInput=true;
+    setTimeout(function(){lockInput=false;gameMsg.innerText='搵到群組即可消除！'},600);
 }
 function randomEmoji(){var i=Math.floor(Math.random()*emojiTypes.length);return{emoji:emojiTypes[i],color:stageColorFor(i,emojiTypes.length),idx:i}}
 

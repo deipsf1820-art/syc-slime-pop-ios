@@ -739,8 +739,15 @@ function loop(ts){
             checkCollision();
         }
         if(gameRunning){
-            ctx.clearRect(0,0,W||400,H||600);
-            drawGrid();drawMaze();ghosts.forEach(drawGhost);drawHero();
+            ctx.save();
+            ctx.fillStyle='#0f0f3a';ctx.fillRect(0,0,W,H);
+            if(ROWS>0&&COLS>0&&maze&&maze.length){
+                drawGrid();drawMaze();ghosts.forEach(drawGhost);drawHero();
+            }else{
+                ctx.fillStyle='#fff';ctx.font='14px sans-serif';ctx.textAlign='center';
+                ctx.fillText('loading...',W/2,H/2);
+            }
+            ctx.restore();
         }
     }
     requestAnimationFrame(loop);

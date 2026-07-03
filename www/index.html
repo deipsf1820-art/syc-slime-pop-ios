@@ -262,26 +262,17 @@ function resize(){
     var wrap=document.getElementById('canvasWrap');
     var rect=wrap.getBoundingClientRect();
     W=Math.floor(rect.width);H=Math.floor(rect.height);
-    if(W<100)W=400;if(H<100)H=600;
+    if(W<100)W=320;if(H<100)H=400;
     var dpr=Math.min(window.devicePixelRatio||1,2);
     canvas.width=W*dpr;canvas.height=H*dpr;
     canvas.style.width=W+'px';canvas.style.height=H+'px';
     ctx.setTransform(dpr,0,0,dpr,0,0);
-    if(gameMode==='tetris'){
-        TETRIS_CELL=Math.floor(Math.min((W-20)/TETRIS_COLS,(H-160)/TETRIS_ROWS));
-        TETRIS_OFFSET_X=Math.floor((W-TETRIS_COLS*TETRIS_CELL)/2);
-        TETRIS_OFFSET_Y=Math.floor((H-160-TETRIS_ROWS*TETRIS_CELL)/2);
-        CELL=TETRIS_CELL;
-        OFFSET_X=TETRIS_OFFSET_X;
-        OFFSET_Y=TETRIS_OFFSET_Y;
-    }else if(gameMode==='maze'){
-        CELL=Math.max(10,Math.min(32,Math.floor((W-20)/COLS),(Math.floor((H-140)/ROWS))));
-        OFFSET_X=Math.floor((W-COLS*CELL)/2);
-        OFFSET_Y=Math.floor((H-140-ROWS*CELL)/2);
-        TETRIS_CELL=CELL;
-        TETRIS_OFFSET_X=OFFSET_X;
-        TETRIS_OFFSET_Y=OFFSET_Y;
-    }
+    TETRIS_CELL=Math.floor(Math.min((W-20)/TETRIS_COLS,(H-160)/TETRIS_ROWS));
+    TETRIS_OFFSET_X=Math.floor((W-TETRIS_COLS*TETRIS_CELL)/2);
+    TETRIS_OFFSET_Y=Math.floor((H-160-TETRIS_ROWS*TETRIS_CELL)/2);
+    CELL=Math.max(10,Math.min(40,Math.floor((W-20)/COLS),Math.floor((H-120)/ROWS)));
+    OFFSET_X=Math.floor((W-COLS*CELL)/2);
+    OFFSET_Y=Math.floor((H-120-ROWS*CELL)/2);
 }
 window.addEventListener('resize',resize);
 resize();
@@ -479,28 +470,63 @@ function drawGrid(){
 // ===== MOVEMENT =====
 function cellFree(x,y){return x>=0&&x<COLS&&y>=0&&y<ROWS&&maze[y][x]!==WALL}
 
-function tryMove(entity,dir){
-    var nx=entity.x+dir.x;
-    var ny=entity.y+dir.y;
-    if(cellFree(nx,ny)){entity.x=nx;entity.y=ny;entity.dir=dir;return true;}
-    return false;
+function getAvailableDirs(entity){
+    var dirs=[];
+    var options=[[0,-1],[1,0],[0,1],[-1,0]];
+    for(var i=0;i<options.length;i++){
+        var nx=entity.x+options[i][0],ny=entity.y+options[i][1];
+        if(cellFree(nx,ny)){
+            // don't allow immediate 180 unless dead end
+            if(options[i][0]===-entity.dir.x&&options[i][1]===-entity.dir.y&&entity.dir.x!==0&&entity.dir.y!==0){
+                // check if other directions available
+                var hasOther=false;
+                for(var j=0;j<options.length;j++){if(j===i)continue;var nxx=entity.x+options[j][0],nyy=entity.y+options[j][1];if(cellFree(nxx,nyy)){hasOther=true;break}}
+                if(hasOther)continue;
+            }
+            dirs.push(options[i]);
+        }
+    }
+    return dirs;
+}
+
+function tryMove(entity){
+    var dirs=getAvailableDirs(entity);
+    if(!dirs.length)return false;
+    
+    // Prefer queued direction if valid
+    var chosen=null;
+    if(entity.nextDir&&(entity.nextDir.x!==0||entity.nextDir.y!==0)){
+        for(var i=0;i<dirs.length;i++){
+            if(dirs[i][0]===entity.nextDir.x&&dirs[i][1]===entity.nextDir.y){
+                chosen=dirs[i];break;
+            }
+        }
+        entity.nextDir={x:0,y:0};
+    }
+    
+    // Otherwise continue current direction if still valid
+    if(!chosen&&entity.dir&&(entity.dir.x!==0||entity.dir.y!==0)){
+        for(var i=0;i<dirs.length;i++){
+            if(dirs[i][0]===entity.dir.x&&dirs[i][1]===entity.dir.y){
+                chosen=dirs[i];break;
+            }
+        }
+    }
+    
+    // Otherwise pick random available
+    if(!chosen){
+        chosen=dirs[Math.floor(Math.random()*dirs.length)];
+    }
+    
+    entity.dir=chosen;
+    entity.x+=chosen[0];
+    entity.y+=chosen[1];
+    return true;
 }
 
 function heroMove(){
     if(levelClearing)return;
-    
-    // Try to change direction
-    if(hero.nextDir.x!==0||hero.nextDir.y!==0){
-        var nx=hero.x+hero.nextDir.x,ny=hero.y+hero.nextDir.y;
-        if(cellFree(nx,ny)){hero.dir=hero.nextDir;hero.nextDir={x:0,y:0}}
-    }
-    
-    if(hero.dir.x!==0||hero.dir.y!==0){
-        var moved=tryMove(hero,hero.dir);
-        if(!moved){
-            hero.dir={x:0,y:0};
-        }
-    }
+    tryMove(hero);
     
     // Eat dot
     if(dots[hero.y]&&dots[hero.y][hero.x]===DOT){
@@ -510,50 +536,60 @@ function heroMove(){
     }else if(dots[hero.y]&&dots[hero.y][hero.x]===POWER){
         dots[hero.y][hero.x]=OPEN;score+=50;
         document.getElementById('score').innerText=score;
-        ghosts.forEach(function(g){g.scared=true;g.scaredTimer=300}); 
+        ghosts.forEach(function(g){g.scared=true;g.scaredTimer=300});
         checkLevelClear();
     }
 }
 
 function ghostAI(g){
-    var speed=g.speed||1;
     g.scaredTimer=g.scaredTimer||0;
     if(g.scaredTimer>0){g.scaredTimer--;if(g.scaredTimer<=0)g.scared=false}
     
-    // Decide target based on AI mode
-    var tx=hero.x,ty=hero.y;
-    if(g.ai===0){(function(){var dirs=[[0,-1],[1,0],[0,1],[-1,0]];dirs.sort(function(a,b){return Math.random()-0.5});[tx,ty]=[dirs[0][0]+g.x,dirs[0][1]+g.y]})()}
-    else if(g.ai===1){(function(){var angle=Math.atan2(hero.y-g.y,hero.x-g.x);tx=Math.round(g.x+Math.cos(angle)*3);ty=Math.round(g.y+Math.sin(angle)*3)})()}
-    else{(function(){var dist=Infinity;var candidates=[];
-        // Try moving toward hero but via path
-        var dirs=[[0,-1],[1,0],[0,1],[-1,0]];
-        for(var d=0;d<dirs.length;d++){
-            var nx=g.x+dirs[d][0],ny=g.y+dirs[d][1];
-            if(cellFree(nx,ny)&&!(dirs[d][0]===-g.dir.x&&dirs[d][1]===-g.dir.y)){candidates.push(dirs[d])}
-        }
-        if(candidates.length){
-            var best=candidates[0],bestD=Infinity;
-            for(var c=0;c<candidates.length;c++){
-                var ddx=hero.x-(g.x+candidates[c][0]),ddy=hero.y-(g.y+candidates[c][1]);
-                var dd=ddx*ddx+ddy*ddy;
-                if(dd<bestD){bestD=dd;best=candidates[c]}
+    // Every few ticks, reconsider direction at junctions
+    if(Math.random()<0.3){
+        var dirs=getAvailableDirs(g);
+        if(!dirs.length)return;
+        
+        var chosen=null;
+        if(g.scared){
+            // Run away from hero
+            var bestD=-Infinity;
+            for(var i=0;i<dirs.length;i++){
+                var dx=(g.x+dirs[i][0])-hero.x;
+                var dy=(g.y+dirs[i][1])-hero.y;
+                var d=dx*dx+dy*dy;
+                if(d>bestD){bestD=d;chosen=dirs[i]}
             }
-            g.dir=best;tx=g.x+best[0];ty=g.y+best[1];
+        }else if(g.ai===0){
+            // random
+            chosen=dirs[Math.floor(Math.random()*dirs.length)];
+        }else if(g.ai===1){
+            // chase with slight randomness
+            var bestD=Infinity;
+            for(var i=0;i<dirs.length;i++){
+                var dx=hero.x-(g.x+dirs[i][0]);
+                var dy=hero.y-(g.y+dirs[i][1]);
+                var d=dx*dx+dy*dy+Math.random()*50;
+                if(d<bestD){bestD=d;chosen=dirs[i]}
+            }
+        }else{
+            // ambush - predict 2 steps ahead
+            var bestD=Infinity;
+            for(var i=0;i<dirs.length;i++){
+                var nx=g.x+dirs[i][0],ny=g.y+dirs[i][1];
+                var dx=hero.x-nx,dy=hero.y-ny;
+                var futureX=nx+dx*0.5,futureY=ny+dy*0.5;
+                var d=Math.abs(hero.x-futureX)+Math.abs(hero.y-futureY);
+                if(d<bestD){bestD=d;chosen=dirs[i]}
+            }
         }
-    })()}
-    
-    // Move toward target
-    var dirs=[[0,-1],[1,0],[0,1],[-1,0]];
-    var best=null,bestD=Infinity;
-    for(var d=0;d<dirs.length;d++){
-        var nx=g.x+dirs[d][0],ny=g.y+dirs[d][1];
-        if(cellFree(nx,ny)){
-            var ddx=tx-nx,ddy=ty-ny;
-            var dd=ddx*ddx+ddy*ddy;
-            if(dd<bestD&&!(dirs[d][0]===-g.dir.x&&dirs[d][1]===-g.dir.y)){bestD=dd;best=dirs[d]}
+        
+        if(chosen){
+            g.dir=chosen;
         }
     }
-    if(best){g.dir=best;tryMove(g,best)}
+    
+    tryMove(g);
 }
 
 function checkCollision(){

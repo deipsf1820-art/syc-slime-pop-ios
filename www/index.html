@@ -260,17 +260,28 @@ var animFrame=0;
 
 function resize(){
     var wrap=document.getElementById('canvasWrap');
-    W=wrap.clientWidth;H=wrap.clientHeight;
-    if(!W||!H)return;
+    var rect=wrap.getBoundingClientRect();
+    W=Math.floor(rect.width);H=Math.floor(rect.height);
+    if(W<100)W=400;if(H<100)H=600;
     var dpr=Math.min(window.devicePixelRatio||1,2);
-    canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';
+    canvas.width=W*dpr;canvas.height=H*dpr;
+    canvas.style.width=W+'px';canvas.style.height=H+'px';
     ctx.setTransform(dpr,0,0,dpr,0,0);
-    
-    var maxCellW=Math.floor((W-20)/COLS);
-    var maxCellH=Math.floor((H-20)/ROWS);
-    CELL=Math.max(16,Math.min(maxCellW,maxCellH,36));
-    OFFSET_X=Math.floor((W-COLS*CELL)/2);
-    OFFSET_Y=Math.floor((H-ROWS*CELL)/2);
+    if(gameMode==='tetris'){
+        TETRIS_CELL=Math.floor(Math.min((W-20)/TETRIS_COLS,(H-160)/TETRIS_ROWS));
+        TETRIS_OFFSET_X=Math.floor((W-TETRIS_COLS*TETRIS_CELL)/2);
+        TETRIS_OFFSET_Y=Math.floor((H-160-TETRIS_ROWS*TETRIS_CELL)/2);
+        CELL=TETRIS_CELL;
+        OFFSET_X=TETRIS_OFFSET_X;
+        OFFSET_Y=TETRIS_OFFSET_Y;
+    }else if(gameMode==='maze'){
+        CELL=Math.max(10,Math.min(32,Math.floor((W-20)/COLS),(Math.floor((H-140)/ROWS))));
+        OFFSET_X=Math.floor((W-COLS*CELL)/2);
+        OFFSET_Y=Math.floor((H-140-ROWS*CELL)/2);
+        TETRIS_CELL=CELL;
+        TETRIS_OFFSET_X=OFFSET_X;
+        TETRIS_OFFSET_Y=OFFSET_Y;
+    }
 }
 window.addEventListener('resize',resize);
 resize();

@@ -359,7 +359,9 @@ function handleTap(ex,ey){
         removeBodies(cells);
     }
     document.getElementById('score').innerText=score;updateStage();
-    setTimeout(function(){gravity();maybeSpawnTop();checkStageClear();lockInput=false;checkGameOver()},80);
+    setTimeout(function(){
+        gravity();maybeSpawnTop();checkStageClear();checkGameOver();lockInput=false;
+    },1200);
 }
 
 function bombAll(bx,by){
@@ -394,7 +396,6 @@ canvas.addEventListener('mousedown',function(e){e.preventDefault();var r=canvas.
 function lbKey(){return'slimeLb'}function readLb(){try{return JSON.parse(localStorage.getItem(lbKey())||'[]')}catch(e){return[]}}function writeLb(a){localStorage.setItem(lbKey(),JSON.stringify(a))}
 function saveLb(){var name2=(document.getElementById('playerName').value||'??').trim();if(!name2)return;var lb=readLb(),idx=-1;for(var i=0;i<lb.length;i++)if(lb[i].name===name2){idx=i;break}if(idx>=0){if(score>lb[idx].score)lb[idx].score=score}else{lb.push({name:name2,score:score})}lb.sort(function(a,b){return b.score-a.score});if(lb.length>10)lb=lb.slice(0,10);writeLb(lb)}
 function renderLb(){var lb=readLb(),ul=document.getElementById('lbList'),emp=document.getElementById('lbEmpty');ul.innerHTML='';if(!lb.length){emp.style.display='block';return}emp.style.display='none';lb.forEach(function(en,i){var li=document.createElement('li');li.innerHTML='<div class="rk">#'+(i+1)+'</div><div class="nm">'+en.name+'</div><div class="sc">'+en.score+'</div>';ul.appendChild(li)})}
-document.getElementById('startBtn').addEventListener('click',function(){try{var n=(document.getElementById('playerName').value||'').trim();if(!n){document.getElementById('playerName').style.borderColor='#e94560';return}document.getElementById('playerName').style.borderColor='rgba(255,255,255,0.25)';var ov=document.getElementById('startOverlay');ov.style.display='none';ov.style.visibility='hidden';ov.style.pointerEvents='none';resetGame();console.log('START_OK')}catch(e){console.error('START_FAIL',e);document.getElementById('popSub').innerText='啟動失敗：'+e.message}});
 document.getElementById('startBtn').addEventListener('touchend',function(e){e.stopPropagation()});
 document.getElementById('rulesBtn').addEventListener('click',function(){document.getElementById('rulesModal').classList.add('open')});
 document.getElementById('rulesBtn2').addEventListener('click',function(){document.getElementById('rulesModal').classList.add('open')});

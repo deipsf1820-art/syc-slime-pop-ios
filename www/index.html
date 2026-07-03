@@ -192,6 +192,7 @@ var gameMsg=document.createElement('div');gameMsg.id='gameMsg';gameMsg.style.css
 var stageText=document.getElementById('stageText');
 var pop=document.getElementById('pop'),popNum=document.getElementById('popNum'),popSub=document.getElementById('popSub');
 var popTimer=null;
+var levelClearedCount=0;
 
 function stageEmojiPool(){return EMOJI_POOLS[Math.min((stage-1)%EMOJI_POOLS.length,EMOJI_POOLS.length-1)]}
 function stageColorFor(i,n){var hue0=(stage*47+10)%360;return 'hsl('+((hue0+i*360/n)%360)+',78%,60%)'}
@@ -370,19 +371,25 @@ function checkOverflow(){
 }
 
 function getStageTarget(){var idx=Math.min(stage-1,stageThresholds.length-1);return stageThresholds[idx]}
-function stageUp(){stage++;stageCleared=false;gameOver=false;updateStage();popShow('STAGE '+stage,'繼續努力！')}
 function checkStageClear(){
     if(stageCleared)return;
-    if(score>=getStageTarget()){
+    if(boardBodies.length===0){
         stageCleared=true;
+        levelClearedCount++;
         updateStage();
-        popShow('STAGE CLEAR！','🎉');
+        popShow('LEVEL CLEAR！','🎉');
         spawnFirework(W/2,H/3,'#ffd166',48);spawnFirework(W/2,H/3,'#06d6a0',48);
-        setTimeout(function(){stageUp();gameMsg.innerText=''},1400);
+        gameMsg.innerText='全清晒！過關！';
+        setTimeout(function(){stageUp();resetBoardKeep();stageCleared=false;gameMsg.innerText='搵到群組即可消除！'},1200);
     }
 }
 
-var audioCtx=null;
+function stageUp(){
+    stage++;score=Math.round(score*1.05);
+    document.getElementById('score').innerText=score;
+    updateStage();
+    popShow('STAGE '+stage,'难度提升！');
+}
 function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
 function playTone(freq,dur,type,vol){if(!audioCtx)return;var o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type||'sine';o.frequency.value=freq;g.gain.value=vol||0.1;o.connect(g);g.connect(audioCtx.destination);o.start();g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+dur);o.stop(audioCtx.currentTime+dur)}
 function sfxPop(){playTone(600+Math.random()*200,0.12,'sine',0.08)}
